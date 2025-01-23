@@ -1,6 +1,6 @@
 # Managlyph
 
-![GitHub tag (latest SemVer)](https://img.shields.io/github/v/tag/ifilot/managlyhph?label=version)
+![GitHub tag (latest SemVer)](https://img.shields.io/github/v/tag/ifilot/managlyph?label=version)
 [![build](https://github.com/ifilot/managlyph/actions/workflows/windows.yml/badge.svg)](https://github.com/ifilot/managlyph/actions/workflows/windows.yml)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
@@ -11,6 +11,9 @@ reaction mechanisms, and molecular properties interactively, enhancing learning
 through dynamic 3D visualizations using red/cyan glasses or 3D monitors. Its
 versatility and ease of use make it an invaluable resource for teaching complex
 chemical concepts.
+
+> [!TIP]
+> Download the Windows 64 bit installer [via this link](https://github.com/ifilot/managlyph/releases/latest/download/managlyph-installer-win64.exe)
 
 ## Features
 
