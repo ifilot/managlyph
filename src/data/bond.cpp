@@ -20,6 +20,7 @@
  **************************************************************************/
 
 #include "bond.h"
+#include <cmath>
 
 Bond::Bond(const Atom& _atom1, const Atom& _atom2) :
 atom1(_atom1),

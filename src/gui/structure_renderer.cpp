@@ -64,7 +64,7 @@ void StructureRenderer::draw(const Frame *frame) {
     if(frame->get_models().size() > 0) {
         QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
         f->glEnable(GL_DEPTH_TEST);
-        f->glEnable(GL_CULL_FACE);
+        f->glDisable(GL_CULL_FACE);
 
         // grab and bind shader
         ShaderProgram *model_shader = this->shader_manager->get_shader_program("object_shader");
