@@ -208,20 +208,22 @@ public:
     /**
      * @brief Set lighting settings for atoms and bonds.
      *
-     * @param ambient_strength
-     * @param specular_strength
+     * @param ambient
+     * @param diffuse
+     * @param specular
      * @param shininess
      */
-    void set_atom_lighting_settings(float ambient_strength, float specular_strength, float shininess);
+    void set_atom_lighting_settings(float ambient, float diffuse, float specular, float shininess);
 
     /**
      * @brief Set lighting settings for objects.
      *
-     * @param ambient_strength
-     * @param specular_strength
+     * @param ambient
+     * @param diffuse
+     * @param specular
      * @param shininess
      */
-    void set_object_lighting_settings(float ambient_strength, float specular_strength, float shininess);
+    void set_object_lighting_settings(float ambient, float diffuse, float specular, float shininess);
 
     /**
      * @brief Get lighting settings for atoms and bonds.

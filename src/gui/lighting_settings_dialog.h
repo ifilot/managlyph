@@ -39,9 +39,11 @@ public:
 
 private:
     struct LightingControls {
+        QSlider* diffuse_slider;
         QSlider* ambient_slider;
         QSlider* specular_slider;
         QSlider* shininess_slider;
+        QLabel* diffuse_value;
         QLabel* ambient_value;
         QLabel* specular_value;
         QLabel* shininess_value;

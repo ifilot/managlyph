@@ -61,12 +61,13 @@ void StructureRenderer::draw_single_object(const std::shared_ptr<Model>& obj,
     shader->set_uniform("model", model);
     shader->set_uniform("view", this->scene->view);
 
-    // 🔥 lighting (this is what went missing)
+    // lighting
     shader->set_uniform("light_pos", QVector3D(0,-1000,1));
     shader->set_uniform("light_color", QVector3D(1,1,1));
 
     auto &ls = scene->object_lighting;
     shader->set_uniform("ambient_strength",  ls.ambient_strength);
+    shader->set_uniform("diffuse_strength",  ls.diffuse_strength);
     shader->set_uniform("specular_strength", ls.specular_strength);
     shader->set_uniform("shininess",         ls.shininess);
 
@@ -91,35 +92,16 @@ void StructureRenderer::draw(const Frame *frame) {
         this->draw_bonds(frame->get_structure().get());
     }
 
-    auto &models = frame->get_models();
+    auto models = frame->get_models();
     if(models.empty()) return;
-
-    QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
-
-    // ---------- OPAQUE PASS (alpha == 1) ----------
-    f->glEnable(GL_DEPTH_TEST);
-    f->glDepthMask(GL_TRUE);
-    f->glDisable(GL_BLEND);
 
     ShaderProgram *model_shader = this->shader_manager->get_shader_program("object_shader");
     model_shader->bind();
+    QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
 
-    for(const auto& obj : models) {
-        if(obj->get_color().w() >= 0.999f) {   // opaque objects
-            draw_single_object(obj, model_shader);
-        }
-    }
-
-    // ---------- TRANSPARENT PASS ----------
-    f->glEnable(GL_BLEND);
+    f->glEnable(GL_DEPTH_TEST);
+    f->glDepthMask(GL_TRUE);
     f->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    f->glDepthMask(GL_FALSE);   // 🚨 CRITICAL FIX
-
-    // Optional but recommended: sort back-to-front
-    std::vector<std::shared_ptr<Model>> transparent_models;
-    for(const auto& obj : models)
-        if(obj->get_color().w() < 0.999f)
-            transparent_models.push_back(obj);
 
     auto get_model_center = [](const std::shared_ptr<Model>& m) {
         const auto& verts = m->get_positions();
@@ -130,7 +112,7 @@ void StructureRenderer::draw(const Frame *frame) {
         return sum / (float)verts.size();
     };
 
-    std::sort(transparent_models.begin(), transparent_models.end(),
+    std::sort(models.begin(), models.end(),
         [&](const auto& a, const auto& b) {
             glm::vec3 ca = get_model_center(a);
             glm::vec3 cb = get_model_center(b);
@@ -142,12 +124,9 @@ void StructureRenderer::draw(const Frame *frame) {
                 (qb - scene->camera_position).lengthSquared();
         });
 
-    for(const auto& obj : transparent_models) {
+    for(const auto& obj : models) {
         draw_single_object(obj, model_shader);
     }
-
-    f->glDepthMask(GL_TRUE);
-    f->glDisable(GL_BLEND);
 
     model_shader->release();
 }
@@ -165,8 +144,6 @@ void StructureRenderer::draw_coordinate_axes() {
 
     // set view port, projection and view matrices
     QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
-    f->glEnable(GL_DEPTH_TEST);
-    f->glEnable(GL_CULL_FACE);
 
     QMatrix4x4 projection_ortho;
     projection_ortho.setToIdentity();
@@ -353,6 +330,7 @@ void StructureRenderer::draw_bonds(const Structure* structure) {
  */
 void StructureRenderer::set_lighting_uniforms(ShaderProgram* shader, const LightingSettings& settings) const {
     shader->set_uniform("ambient_strength", settings.ambient_strength);
+    shader->set_uniform("diffuse_strength",  settings.diffuse_strength);
     shader->set_uniform("specular_strength", settings.specular_strength);
     shader->set_uniform("shininess", settings.shininess);
 }

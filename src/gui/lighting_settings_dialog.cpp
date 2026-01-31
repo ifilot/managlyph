@@ -53,6 +53,7 @@ LightingSettingsDialog::LightingSettingsDialog(AnaglyphWidget* anaglyph_widget, 
 
     auto connect_controls = [this](const LightingControls& controls) {
         connect(controls.ambient_slider, &QSlider::valueChanged, this, [this]() { apply_settings(); });
+        connect(controls.diffuse_slider, &QSlider::valueChanged, this, [this]() { apply_settings(); });
         connect(controls.specular_slider, &QSlider::valueChanged, this, [this]() { apply_settings(); });
         connect(controls.shininess_slider, &QSlider::valueChanged, this, [this]() { apply_settings(); });
     };
@@ -71,15 +72,28 @@ void LightingSettingsDialog::apply_settings() {
     }
 
     float atom_ambient_strength = atom_controls.ambient_slider->value() / 100.0f;
+    float atom_diffuse_strength = atom_controls.diffuse_slider->value() / 100.0f;
     float atom_specular_strength = atom_controls.specular_slider->value() / 100.0f;
     float atom_shininess = static_cast<float>(atom_controls.shininess_slider->value());
 
     float object_ambient_strength = object_controls.ambient_slider->value() / 100.0f;
+    float object_diffuse_strength = object_controls.diffuse_slider->value() / 100.0f;
     float object_specular_strength = object_controls.specular_slider->value() / 100.0f;
     float object_shininess = static_cast<float>(object_controls.shininess_slider->value());
 
-    anaglyph_widget->set_atom_lighting_settings(atom_ambient_strength, atom_specular_strength, atom_shininess);
-    anaglyph_widget->set_object_lighting_settings(object_ambient_strength, object_specular_strength, object_shininess);
+    anaglyph_widget->set_atom_lighting_settings(
+        atom_ambient_strength,
+        atom_diffuse_strength,
+        atom_specular_strength,
+        atom_shininess
+    );
+
+    anaglyph_widget->set_object_lighting_settings(
+        object_ambient_strength,
+        object_diffuse_strength,
+        object_specular_strength,
+        object_shininess
+    );
 
     update_labels(atom_controls);
     update_labels(object_controls);
@@ -94,16 +108,20 @@ void LightingSettingsDialog::refresh_from_widget() {
     const LightingSettings object_settings = anaglyph_widget->get_object_lighting_settings();
 
     QSignalBlocker atom_ambient_blocker(atom_controls.ambient_slider);
+    QSignalBlocker atom_diffuse_blocker(atom_controls.diffuse_slider);
     QSignalBlocker atom_specular_blocker(atom_controls.specular_slider);
     QSignalBlocker atom_shininess_blocker(atom_controls.shininess_slider);
     atom_controls.ambient_slider->setValue(static_cast<int>(atom_settings.ambient_strength * 100.0f));
+    atom_controls.diffuse_slider->setValue(static_cast<int>(atom_settings.diffuse_strength * 100.0f));
     atom_controls.specular_slider->setValue(static_cast<int>(atom_settings.specular_strength * 100.0f));
     atom_controls.shininess_slider->setValue(static_cast<int>(atom_settings.shininess));
 
     QSignalBlocker object_ambient_blocker(object_controls.ambient_slider);
+    QSignalBlocker object_diffuse_blocker(object_controls.diffuse_slider);
     QSignalBlocker object_specular_blocker(object_controls.specular_slider);
     QSignalBlocker object_shininess_blocker(object_controls.shininess_slider);
     object_controls.ambient_slider->setValue(static_cast<int>(object_settings.ambient_strength * 100.0f));
+    object_controls.diffuse_slider->setValue(static_cast<int>(object_settings.diffuse_strength * 100.0f));
     object_controls.specular_slider->setValue(static_cast<int>(object_settings.specular_strength * 100.0f));
     object_controls.shininess_slider->setValue(static_cast<int>(object_settings.shininess));
 
@@ -119,6 +137,11 @@ void LightingSettingsDialog::setup_controls(QGroupBox* group_box, LightingContro
     controls->ambient_slider->setSingleStep(1);
     controls->ambient_value = new QLabel();
 
+    controls->diffuse_slider = new QSlider(Qt::Horizontal);
+    controls->diffuse_slider->setRange(0, kFloatSliderMax);
+    controls->diffuse_slider->setSingleStep(1);
+    controls->diffuse_value = new QLabel();
+
     controls->specular_slider = new QSlider(Qt::Horizontal);
     controls->specular_slider->setRange(0, kFloatSliderMax);
     controls->specular_slider->setSingleStep(1);
@@ -133,17 +156,22 @@ void LightingSettingsDialog::setup_controls(QGroupBox* group_box, LightingContro
     grid->addWidget(controls->ambient_slider, 0, 1);
     grid->addWidget(controls->ambient_value, 0, 2);
 
-    grid->addWidget(new QLabel(tr("Specular strength")), 1, 0);
-    grid->addWidget(controls->specular_slider, 1, 1);
-    grid->addWidget(controls->specular_value, 1, 2);
+    grid->addWidget(new QLabel(tr("Diffuse strength")), 1, 0);
+    grid->addWidget(controls->diffuse_slider, 1, 1);
+    grid->addWidget(controls->diffuse_value, 1, 2);
 
-    grid->addWidget(new QLabel(tr("Shininess")), 2, 0);
-    grid->addWidget(controls->shininess_slider, 2, 1);
-    grid->addWidget(controls->shininess_value, 2, 2);
+    grid->addWidget(new QLabel(tr("Specular strength")), 2, 0);
+    grid->addWidget(controls->specular_slider, 2, 1);
+    grid->addWidget(controls->specular_value, 2, 2);
+
+    grid->addWidget(new QLabel(tr("Shininess")), 3, 0);
+    grid->addWidget(controls->shininess_slider, 3, 1);
+    grid->addWidget(controls->shininess_value, 3, 2);
 }
 
 void LightingSettingsDialog::update_labels(const LightingControls& controls) {
     controls.ambient_value->setText(to_percent_label(controls.ambient_slider->value()));
+    controls.diffuse_value->setText(to_percent_label(controls.diffuse_slider->value()));
     controls.specular_value->setText(to_percent_label(controls.specular_slider->value()));
     controls.shininess_value->setText(QString::number(controls.shininess_slider->value()));
 }

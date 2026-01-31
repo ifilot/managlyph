@@ -48,6 +48,7 @@ enum class CameraMode {
 
 struct LightingSettings {
     float ambient_strength = 0.15f;
+    float diffuse_strength = 0.5f;
     float specular_strength = 0.5f;
     float shininess = 64.0f;
 };

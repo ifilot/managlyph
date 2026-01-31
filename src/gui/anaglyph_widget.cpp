@@ -65,13 +65,15 @@ void AnaglyphWidget::rotate_scene(float angle) {
  * @param specular_strength
  * @param shininess
  */
-void AnaglyphWidget::set_atom_lighting_settings(float ambient_strength, float specular_strength, float shininess) {
-    this->scene->atom_lighting.ambient_strength = ambient_strength;
-    this->scene->atom_lighting.specular_strength = specular_strength;
+void AnaglyphWidget::set_atom_lighting_settings(float ambient, float diffuse, float specular, float shininess) {
+    this->scene->atom_lighting.ambient_strength = ambient;
+    this->scene->atom_lighting.diffuse_strength = diffuse;
+    this->scene->atom_lighting.specular_strength = specular;
     this->scene->atom_lighting.shininess = shininess;
     QSettings settings;
-    settings.setValue("lighting/atoms/ambient_strength", ambient_strength);
-    settings.setValue("lighting/atoms/specular_strength", specular_strength);
+    settings.setValue("lighting/atoms/ambient_strength", ambient);
+    settings.setValue("lighting/atoms/diffuse_strength", diffuse);
+    settings.setValue("lighting/atoms/specular_strength", specular);
     settings.setValue("lighting/atoms/shininess", shininess);
     this->update();
 }
@@ -83,13 +85,15 @@ void AnaglyphWidget::set_atom_lighting_settings(float ambient_strength, float sp
  * @param specular_strength
  * @param shininess
  */
-void AnaglyphWidget::set_object_lighting_settings(float ambient_strength, float specular_strength, float shininess) {
-    this->scene->object_lighting.ambient_strength = ambient_strength;
-    this->scene->object_lighting.specular_strength = specular_strength;
+void AnaglyphWidget::set_object_lighting_settings(float ambient, float diffuse, float specular, float shininess) {
+    this->scene->object_lighting.ambient_strength = ambient;
+    this->scene->object_lighting.diffuse_strength = diffuse;
+    this->scene->object_lighting.specular_strength = specular;
     this->scene->object_lighting.shininess = shininess;
     QSettings settings;
-    settings.setValue("lighting/objects/ambient_strength", ambient_strength);
-    settings.setValue("lighting/objects/specular_strength", specular_strength);
+    settings.setValue("lighting/objects/ambient_strength", ambient);
+    settings.setValue("lighting/objects/diffuse_strength", diffuse);
+    settings.setValue("lighting/objects/specular_strength", specular);
     settings.setValue("lighting/objects/shininess", shininess);
     this->update();
 }
@@ -310,6 +314,7 @@ void AnaglyphWidget::paintGL() {
         this->paint_stereographic();
     }
 
+    // then combine everything
     if(this->flag_axis_enabled) {
         glDisable(GL_DEPTH_TEST);
         glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);

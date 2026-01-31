@@ -6,6 +6,7 @@ in vec3 normal_eyespace;
 
 uniform vec4  color;                 // base surface color
 uniform vec3  light_color;           // light intensity/color
+uniform float diffuse_strength;
 uniform float ambient_strength;
 uniform float specular_strength;
 uniform float shininess;             // specular exponent (e.g. 16–128)
@@ -24,7 +25,7 @@ void main()
 
     // --- Diffuse (Lambert) ---
     float NdotL = max(dot(N, L), 0.0);
-    vec3 diffuse = NdotL * light_color;
+    vec3 diffuse = diffuse_strength * NdotL * light_color;
 
     // --- Blinn-Phong specular (better than reflect()) ---
     vec3 H = normalize(L + V);   // half-vector
