@@ -101,6 +101,13 @@ public:
 
 private:
     /**
+     * @brief      Set lighting uniforms.
+     *
+     * @param      shader  The shader
+     */
+    void set_lighting_uniforms(ShaderProgram* shader) const;
+
+    /**
      * @brief      Draws atoms.
      *
      * @param[in]  atoms           The atoms

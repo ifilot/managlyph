@@ -67,6 +67,12 @@ enum FrameBuffer {
     NR_FRAMEBUFFERS
 };
 
+struct LightingSettings {
+    float ambient_strength = 0.15f;
+    float specular_strength = 0.5f;
+    float shininess = 64.0f;
+};
+
 class AnaglyphWidget : public QOpenGLWidget, protected QOpenGLFunctions {
     Q_OBJECT
 
@@ -204,6 +210,22 @@ public:
     inline void set_camera_zoom(float v) {
         this->scene->camera_position[1] = -v;
     }
+
+    /**
+     * @brief Set lighting settings for the scene.
+     *
+     * @param ambient_strength
+     * @param specular_strength
+     * @param shininess
+     */
+    void set_lighting_settings(float ambient_strength, float specular_strength, float shininess);
+
+    /**
+     * @brief Get lighting settings for the scene.
+     *
+     * @return lighting settings
+     */
+    LightingSettings get_lighting_settings() const;
 
     ~AnaglyphWidget();
 

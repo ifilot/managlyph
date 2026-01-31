@@ -55,6 +55,33 @@ void AnaglyphWidget::rotate_scene(float angle) {
 }
 
 /**
+ * @brief Set lighting settings for the scene.
+ *
+ * @param ambient_strength
+ * @param specular_strength
+ * @param shininess
+ */
+void AnaglyphWidget::set_lighting_settings(float ambient_strength, float specular_strength, float shininess) {
+    this->scene->ambient_strength = ambient_strength;
+    this->scene->specular_strength = specular_strength;
+    this->scene->shininess = shininess;
+    this->update();
+}
+
+/**
+ * @brief Get lighting settings for the scene.
+ *
+ * @return lighting settings
+ */
+LightingSettings AnaglyphWidget::get_lighting_settings() const {
+    return LightingSettings{
+        this->scene->ambient_strength,
+        this->scene->specular_strength,
+        this->scene->shininess
+    };
+}
+
+/**
  * @brief      Sets the camera alignment.
  *
  * @param[in]  direction  The direction

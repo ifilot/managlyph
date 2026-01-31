@@ -45,6 +45,7 @@ add_executable(managlyph
     src/data/orbitals/wavefunction.cpp
     src/gui/anaglyph_widget.cpp
     src/gui/interface_window.cpp
+    src/gui/lighting_settings_dialog.cpp
     src/gui/logwindow.cpp
     src/gui/mainwindow.cpp
     src/gui/orbital_widget.cpp
@@ -63,8 +64,8 @@ add_executable(managlyph
     resources.qrc
 )
 
-target_link_libraries(managlyph PRIVATE 
-    Qt5::Core 
+target_link_libraries(managlyph PRIVATE
+    Qt5::Core
     Qt5::Widgets
     Eigen3::Eigen
     glm::glm

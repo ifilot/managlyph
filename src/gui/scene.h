@@ -59,6 +59,9 @@ public:
     int canvas_height;
 
     CameraMode camera_mode = CameraMode::PERSPECTIVE;
+    float ambient_strength = 0.15f;
+    float specular_strength = 0.5f;
+    float shininess = 64.0f;
 
     Scene();
 

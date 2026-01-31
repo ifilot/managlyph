@@ -81,8 +81,11 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
 
     // actions for tools menu
     QAction *action_view_orbitals_menu = new QAction(menu_tools);
+    QAction *action_lighting_settings = new QAction(menu_tools);
     action_view_orbitals_menu->setText(tr("Orbitals menu"));
+    action_lighting_settings->setText(tr("Lighting settings"));
     menu_tools->addAction(action_view_orbitals_menu);
+    menu_tools->addAction(action_lighting_settings);
 
     // actions for help menu
     QAction *action_about = new QAction(menu_help);
@@ -197,6 +200,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
 
     // connect actions tools menu
     connect(action_view_orbitals_menu, &QAction::triggered, this, &MainWindow::toggle_orbitals_menu);
+    connect(action_lighting_settings, &QAction::triggered, this, &MainWindow::show_lighting_settings);
 
     // connect actions about menu
     connect(action_about, &QAction::triggered, this, &MainWindow::about);
@@ -257,15 +261,29 @@ void MainWindow::set_cli_parser(const QCommandLineParser& cli_parser) {
  * @brief      Open a new object file
  */
 void MainWindow::open() {
+    QSettings settings;
+
+    // Default to last directory, or user's home directory
+    const QString start_dir = settings.value(
+        "ui/lastOpenDir",
+        QStandardPaths::writableLocation(QStandardPaths::HomeLocation)
+    ).toString();
+
     QString filename = QFileDialog::getOpenFileName(this,
         tr("Open file"),
-        "",
+        start_dir,
         tr("Atom Bond Object files (*abo);;")
     );
 
     if(filename.isEmpty()) {
         return;
     }
+
+    // Remember directory for next time
+    settings.setValue(
+        "ui/lastOpenDir",
+        QFileInfo(filename).absolutePath()
+    );
 
     // display load time
     this->interface_window->open_file(filename);
@@ -436,6 +454,23 @@ void MainWindow::statusbar_timeout() {
  */
 void MainWindow::toggle_orbitals_menu() {
     this->interface_window->toggle_orbital_menu_visible();
+}
+
+/**
+ * @brief      Show lighting settings window
+ */
+void MainWindow::show_lighting_settings() {
+    if (!this->lighting_settings_dialog) {
+        this->lighting_settings_dialog = std::make_unique<LightingSettingsDialog>(
+            this->interface_window->get_anaglyph_widget(),
+            this
+        );
+    }
+
+    this->lighting_settings_dialog->sync_from_widget();
+    this->lighting_settings_dialog->show();
+    this->lighting_settings_dialog->raise();
+    this->lighting_settings_dialog->activateWindow();
 }
 
 /**

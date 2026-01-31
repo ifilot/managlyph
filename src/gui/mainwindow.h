@@ -34,8 +34,11 @@
 #include <QTimer>
 #include <QStringList>
 #include <QCommandLineParser>
+#include <QStandardPaths>
+#include <QSettings>
 
 #include "interface_window.h"
+#include "lighting_settings_dialog.h"
 #include "logwindow.h"
 
 #include "../config.h"
@@ -58,6 +61,7 @@ private:
 
     // window for log messages
     std::unique_ptr<LogWindow> log_window;
+    std::unique_ptr<LightingSettingsDialog> lighting_settings_dialog;
 
 public:
     /**
@@ -121,6 +125,11 @@ private slots:
      * @brief Show an about window
      */
     void slot_debug_log();
+
+    /**
+     * @brief      Show lighting settings window
+     */
+    void show_lighting_settings();
 
 private:
     /**

@@ -78,9 +78,7 @@ void StructureRenderer::draw(const Frame *frame) {
         model_shader->set_uniform("view", this->scene->view);
         model_shader->set_uniform("light_pos", QVector3D(0,-1000,1));
         model_shader->set_uniform("light_color", QVector3D(1,1,1));
-        model_shader->set_uniform("ambient_strength", 0.15f);
-        model_shader->set_uniform("specular_strength", 0.5f);
-        model_shader->set_uniform("shininess", 64.0f);
+        this->set_lighting_uniforms(model_shader);
 
         for(const auto& obj : frame->get_models()) {
             model.translate(frame->get_structure()->get_center_vector());
@@ -189,9 +187,7 @@ void StructureRenderer::draw_atoms(const Structure* structure) {
     model_shader->set_uniform("view", this->scene->view);
     model_shader->set_uniform("light_pos", QVector3D(0,-1000,1));
     model_shader->set_uniform("light_color", QVector3D(1,1,1));
-    model_shader->set_uniform("ambient_strength", 0.15f);
-    model_shader->set_uniform("specular_strength", 0.5f);
-    model_shader->set_uniform("shininess", 64.0f);
+    this->set_lighting_uniforms(model_shader);
 
     // get the vector that positions the unitcell at the origin
     auto ctr_vector = structure->get_center_vector();
@@ -246,9 +242,7 @@ void StructureRenderer::draw_bonds(const Structure* structure) {
     model_shader->set_uniform("view", this->scene->view);
     model_shader->set_uniform("light_pos", QVector3D(0,-1000,1));
     model_shader->set_uniform("light_color", QVector3D(1,1,1));
-    model_shader->set_uniform("ambient_strength", 0.15f);
-    model_shader->set_uniform("specular_strength", 0.5f);
-    model_shader->set_uniform("shininess", 64.0f);
+    this->set_lighting_uniforms(model_shader);
 
     // get the vector that positions the unitcell at the origin
     auto ctr_vector = structure->get_center_vector();
@@ -295,6 +289,17 @@ void StructureRenderer::draw_bonds(const Structure* structure) {
 
     this->vao_cylinder.release();
     model_shader->release();
+}
+
+/**
+ * @brief      Set lighting uniforms.
+ *
+ * @param      shader  The shader
+ */
+void StructureRenderer::set_lighting_uniforms(ShaderProgram* shader) const {
+    shader->set_uniform("ambient_strength", this->scene->ambient_strength);
+    shader->set_uniform("specular_strength", this->scene->specular_strength);
+    shader->set_uniform("shininess", this->scene->shininess);
 }
 
 /**
