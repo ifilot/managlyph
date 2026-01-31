@@ -67,12 +67,6 @@ enum FrameBuffer {
     NR_FRAMEBUFFERS
 };
 
-struct LightingSettings {
-    float ambient_strength = 0.15f;
-    float specular_strength = 0.5f;
-    float shininess = 64.0f;
-};
-
 class AnaglyphWidget : public QOpenGLWidget, protected QOpenGLFunctions {
     Q_OBJECT
 
@@ -212,20 +206,36 @@ public:
     }
 
     /**
-     * @brief Set lighting settings for the scene.
+     * @brief Set lighting settings for atoms and bonds.
      *
      * @param ambient_strength
      * @param specular_strength
      * @param shininess
      */
-    void set_lighting_settings(float ambient_strength, float specular_strength, float shininess);
+    void set_atom_lighting_settings(float ambient_strength, float specular_strength, float shininess);
 
     /**
-     * @brief Get lighting settings for the scene.
+     * @brief Set lighting settings for objects.
+     *
+     * @param ambient_strength
+     * @param specular_strength
+     * @param shininess
+     */
+    void set_object_lighting_settings(float ambient_strength, float specular_strength, float shininess);
+
+    /**
+     * @brief Get lighting settings for atoms and bonds.
      *
      * @return lighting settings
      */
-    LightingSettings get_lighting_settings() const;
+    LightingSettings get_atom_lighting_settings() const;
+
+    /**
+     * @brief Get lighting settings for objects.
+     *
+     * @return lighting settings
+     */
+    LightingSettings get_object_lighting_settings() const;
 
     ~AnaglyphWidget();
 
@@ -296,6 +306,11 @@ protected:
      * @param      arcball_angle, arcball_vector
      */
     void set_arcball_rotation(float arcball_angle, const QVector4D& arcball_vector);
+
+    /**
+     * @brief Load lighting settings from persistent storage.
+     */
+    void load_lighting_settings();
 
 private:
     /**

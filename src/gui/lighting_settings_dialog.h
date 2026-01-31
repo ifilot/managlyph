@@ -26,6 +26,7 @@
 #include <QLabel>
 #include <QVBoxLayout>
 #include <QGridLayout>
+#include <QGroupBox>
 
 #include "anaglyph_widget.h"
 
@@ -37,16 +38,22 @@ public:
     void sync_from_widget();
 
 private:
+    struct LightingControls {
+        QSlider* ambient_slider;
+        QSlider* specular_slider;
+        QSlider* shininess_slider;
+        QLabel* ambient_value;
+        QLabel* specular_value;
+        QLabel* shininess_value;
+    };
+
     void apply_settings();
     void refresh_from_widget();
+    void setup_controls(QGroupBox* group_box, LightingControls* controls);
+    void update_labels(const LightingControls& controls);
 
     AnaglyphWidget* anaglyph_widget;
 
-    QSlider* ambient_slider;
-    QSlider* specular_slider;
-    QSlider* shininess_slider;
-
-    QLabel* ambient_value;
-    QLabel* specular_value;
-    QLabel* shininess_value;
+    LightingControls atom_controls;
+    LightingControls object_controls;
 };

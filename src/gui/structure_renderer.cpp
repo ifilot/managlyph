@@ -46,6 +46,37 @@ StructureRenderer::StructureRenderer(const std::shared_ptr<Scene>& _scene,
 }
 
 /**
+ * @brief      Draw single object
+ *
+ * @param[in]  structure  The structure
+ * @param[in]  shader     Which shader to use
+ */
+void StructureRenderer::draw_single_object(const std::shared_ptr<Model>& obj,
+                                           ShaderProgram* shader)
+{
+    QMatrix4x4 model = (this->scene->arcball_rotation * this->scene->rotation_matrix);
+    QMatrix4x4 mvp   = (this->scene->projection * this->scene->view) * model;
+
+    shader->set_uniform("mvp", mvp);
+    shader->set_uniform("model", model);
+    shader->set_uniform("view", this->scene->view);
+
+    // 🔥 lighting (this is what went missing)
+    shader->set_uniform("light_pos", QVector3D(0,-1000,1));
+    shader->set_uniform("light_color", QVector3D(1,1,1));
+
+    auto &ls = scene->object_lighting;
+    shader->set_uniform("ambient_strength",  ls.ambient_strength);
+    shader->set_uniform("specular_strength", ls.specular_strength);
+    shader->set_uniform("shininess",         ls.shininess);
+
+    shader->set_uniform("color", obj->get_color());
+
+    obj->draw();
+}
+
+
+/**
  * @brief      Draw the structure
  *
  * @param[in]  structure       The structure
@@ -60,41 +91,65 @@ void StructureRenderer::draw(const Frame *frame) {
         this->draw_bonds(frame->get_structure().get());
     }
 
-    // draw orbitals (or objects in general)
-    if(frame->get_models().size() > 0) {
-        QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
-        f->glEnable(GL_DEPTH_TEST);
-        f->glDisable(GL_CULL_FACE);
+    auto &models = frame->get_models();
+    if(models.empty()) return;
 
-        // grab and bind shader
-        ShaderProgram *model_shader = this->shader_manager->get_shader_program("object_shader");
-        model_shader->bind();
+    QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
 
-        // build model
-        QMatrix4x4 model = (this->scene->arcball_rotation * this->scene->rotation_matrix);
-        QMatrix4x4 mvp;
+    // ---------- OPAQUE PASS (alpha == 1) ----------
+    f->glEnable(GL_DEPTH_TEST);
+    f->glDepthMask(GL_TRUE);
+    f->glDisable(GL_BLEND);
 
-        // set general properties
-        model_shader->set_uniform("view", this->scene->view);
-        model_shader->set_uniform("light_pos", QVector3D(0,-1000,1));
-        model_shader->set_uniform("light_color", QVector3D(1,1,1));
-        this->set_lighting_uniforms(model_shader);
+    ShaderProgram *model_shader = this->shader_manager->get_shader_program("object_shader");
+    model_shader->bind();
 
-        for(const auto& obj : frame->get_models()) {
-            model.translate(frame->get_structure()->get_center_vector());
-
-            // build model - view - projection matrix
-            mvp = (this->scene->projection * this->scene->view) * model;
-
-            // set per-atom properties
-            model_shader->set_uniform("mvp", mvp);
-            model_shader->set_uniform("model", model);
-            model_shader->set_uniform("color", obj->get_color());
-
-            obj->draw();
+    for(const auto& obj : models) {
+        if(obj->get_color().w() >= 0.999f) {   // opaque objects
+            draw_single_object(obj, model_shader);
         }
-        model_shader->release();
     }
+
+    // ---------- TRANSPARENT PASS ----------
+    f->glEnable(GL_BLEND);
+    f->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    f->glDepthMask(GL_FALSE);   // 🚨 CRITICAL FIX
+
+    // Optional but recommended: sort back-to-front
+    std::vector<std::shared_ptr<Model>> transparent_models;
+    for(const auto& obj : models)
+        if(obj->get_color().w() < 0.999f)
+            transparent_models.push_back(obj);
+
+    auto get_model_center = [](const std::shared_ptr<Model>& m) {
+        const auto& verts = m->get_positions();
+        if (verts.empty()) return glm::vec3(0.0f);
+
+        glm::vec3 sum(0.0f);
+        for(const auto& v : verts) sum += v;
+        return sum / (float)verts.size();
+    };
+
+    std::sort(transparent_models.begin(), transparent_models.end(),
+        [&](const auto& a, const auto& b) {
+            glm::vec3 ca = get_model_center(a);
+            glm::vec3 cb = get_model_center(b);
+
+            QVector3D qa(ca.x, ca.y, ca.z);
+            QVector3D qb(cb.x, cb.y, cb.z);
+
+            return (qa - scene->camera_position).lengthSquared() >
+                (qb - scene->camera_position).lengthSquared();
+        });
+
+    for(const auto& obj : transparent_models) {
+        draw_single_object(obj, model_shader);
+    }
+
+    f->glDepthMask(GL_TRUE);
+    f->glDisable(GL_BLEND);
+
+    model_shader->release();
 }
 
 /**
@@ -187,7 +242,7 @@ void StructureRenderer::draw_atoms(const Structure* structure) {
     model_shader->set_uniform("view", this->scene->view);
     model_shader->set_uniform("light_pos", QVector3D(0,-1000,1));
     model_shader->set_uniform("light_color", QVector3D(1,1,1));
-    this->set_lighting_uniforms(model_shader);
+    this->set_lighting_uniforms(model_shader, this->scene->atom_lighting);
 
     // get the vector that positions the unitcell at the origin
     auto ctr_vector = structure->get_center_vector();
@@ -242,7 +297,7 @@ void StructureRenderer::draw_bonds(const Structure* structure) {
     model_shader->set_uniform("view", this->scene->view);
     model_shader->set_uniform("light_pos", QVector3D(0,-1000,1));
     model_shader->set_uniform("light_color", QVector3D(1,1,1));
-    this->set_lighting_uniforms(model_shader);
+    this->set_lighting_uniforms(model_shader, this->scene->atom_lighting);
 
     // get the vector that positions the unitcell at the origin
     auto ctr_vector = structure->get_center_vector();
@@ -296,10 +351,10 @@ void StructureRenderer::draw_bonds(const Structure* structure) {
  *
  * @param      shader  The shader
  */
-void StructureRenderer::set_lighting_uniforms(ShaderProgram* shader) const {
-    shader->set_uniform("ambient_strength", this->scene->ambient_strength);
-    shader->set_uniform("specular_strength", this->scene->specular_strength);
-    shader->set_uniform("shininess", this->scene->shininess);
+void StructureRenderer::set_lighting_uniforms(ShaderProgram* shader, const LightingSettings& settings) const {
+    shader->set_uniform("ambient_strength", settings.ambient_strength);
+    shader->set_uniform("specular_strength", settings.specular_strength);
+    shader->set_uniform("shininess", settings.shininess);
 }
 
 /**

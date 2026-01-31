@@ -21,6 +21,8 @@
 
 #include "anaglyph_widget.h"
 
+#include <QSettings>
+
 /**
  * @brief      Constructs a new instance.
  *
@@ -43,6 +45,8 @@ AnaglyphWidget::AnaglyphWidget(QWidget *parent)
 
     // enable mouse tracking
     this->setMouseTracking(true);
+
+    this->load_lighting_settings();
 }
 
 /**
@@ -55,30 +59,81 @@ void AnaglyphWidget::rotate_scene(float angle) {
 }
 
 /**
- * @brief Set lighting settings for the scene.
+ * @brief Set lighting settings for atoms and bonds.
  *
  * @param ambient_strength
  * @param specular_strength
  * @param shininess
  */
-void AnaglyphWidget::set_lighting_settings(float ambient_strength, float specular_strength, float shininess) {
-    this->scene->ambient_strength = ambient_strength;
-    this->scene->specular_strength = specular_strength;
-    this->scene->shininess = shininess;
+void AnaglyphWidget::set_atom_lighting_settings(float ambient_strength, float specular_strength, float shininess) {
+    this->scene->atom_lighting.ambient_strength = ambient_strength;
+    this->scene->atom_lighting.specular_strength = specular_strength;
+    this->scene->atom_lighting.shininess = shininess;
+    QSettings settings;
+    settings.setValue("lighting/atoms/ambient_strength", ambient_strength);
+    settings.setValue("lighting/atoms/specular_strength", specular_strength);
+    settings.setValue("lighting/atoms/shininess", shininess);
     this->update();
 }
 
 /**
- * @brief Get lighting settings for the scene.
+ * @brief Set lighting settings for objects.
+ *
+ * @param ambient_strength
+ * @param specular_strength
+ * @param shininess
+ */
+void AnaglyphWidget::set_object_lighting_settings(float ambient_strength, float specular_strength, float shininess) {
+    this->scene->object_lighting.ambient_strength = ambient_strength;
+    this->scene->object_lighting.specular_strength = specular_strength;
+    this->scene->object_lighting.shininess = shininess;
+    QSettings settings;
+    settings.setValue("lighting/objects/ambient_strength", ambient_strength);
+    settings.setValue("lighting/objects/specular_strength", specular_strength);
+    settings.setValue("lighting/objects/shininess", shininess);
+    this->update();
+}
+
+/**
+ * @brief Get lighting settings for atoms and bonds.
  *
  * @return lighting settings
  */
-LightingSettings AnaglyphWidget::get_lighting_settings() const {
+LightingSettings AnaglyphWidget::get_atom_lighting_settings() const {
     return LightingSettings{
-        this->scene->ambient_strength,
-        this->scene->specular_strength,
-        this->scene->shininess
+        this->scene->atom_lighting.ambient_strength,
+        this->scene->atom_lighting.specular_strength,
+        this->scene->atom_lighting.shininess
     };
+}
+
+/**
+ * @brief Get lighting settings for objects.
+ *
+ * @return lighting settings
+ */
+LightingSettings AnaglyphWidget::get_object_lighting_settings() const {
+    return LightingSettings{
+        this->scene->object_lighting.ambient_strength,
+        this->scene->object_lighting.specular_strength,
+        this->scene->object_lighting.shininess
+    };
+}
+
+void AnaglyphWidget::load_lighting_settings() {
+    QSettings settings;
+    this->scene->atom_lighting.ambient_strength =
+        settings.value("lighting/atoms/ambient_strength", this->scene->atom_lighting.ambient_strength).toFloat();
+    this->scene->atom_lighting.specular_strength =
+        settings.value("lighting/atoms/specular_strength", this->scene->atom_lighting.specular_strength).toFloat();
+    this->scene->atom_lighting.shininess =
+        settings.value("lighting/atoms/shininess", this->scene->atom_lighting.shininess).toFloat();
+    this->scene->object_lighting.ambient_strength =
+        settings.value("lighting/objects/ambient_strength", this->scene->atom_lighting.ambient_strength).toFloat();
+    this->scene->object_lighting.specular_strength =
+        settings.value("lighting/objects/specular_strength", this->scene->atom_lighting.specular_strength).toFloat();
+    this->scene->object_lighting.shininess =
+        settings.value("lighting/objects/shininess", this->scene->atom_lighting.shininess).toFloat();
 }
 
 /**
@@ -321,7 +376,7 @@ void AnaglyphWidget::resizeGL(int w, int h) {
     // resize textures and render buffers
     for (unsigned int i = 0; i < FrameBuffer::NR_FRAMEBUFFERS; ++i) {
         glBindTexture(GL_TEXTURE_2D, this->texture_color_buffers[i]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
         glBindRenderbuffer(GL_RENDERBUFFER, this->rbo[i]);
         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
@@ -532,7 +587,7 @@ void AnaglyphWidget::build_framebuffers() {
     for (unsigned int i = 0; i < FrameBuffer::NR_FRAMEBUFFERS; ++i) {
         glBindFramebuffer(GL_FRAMEBUFFER, this->framebuffers[i]);
         glBindTexture(GL_TEXTURE_2D, this->texture_color_buffers[i]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, this->geometry().width(), this->geometry().height(), 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, this->geometry().width(), this->geometry().height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, this->texture_color_buffers[i], 0);

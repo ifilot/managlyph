@@ -97,6 +97,10 @@ public:
         return this->indices.size();
     }
 
+    const std::vector<glm::vec3>& get_positions() const { 
+        return positions; 
+    }
+
     inline bool is_loaded() const {
         return this->flag_loaded_vao;
     }
