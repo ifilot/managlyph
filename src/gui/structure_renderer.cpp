@@ -76,7 +76,11 @@ void StructureRenderer::draw(const Frame *frame) {
 
         // set general properties
         model_shader->set_uniform("view", this->scene->view);
-        model_shader->set_uniform("lightpos", QVector3D(0,-1000,1));
+        model_shader->set_uniform("light_pos", QVector3D(0,-1000,1));
+        model_shader->set_uniform("light_color", QVector3D(1,1,1));
+        model_shader->set_uniform("ambient_strength", 0.15f);
+        model_shader->set_uniform("specular_strength", 0.5f);
+        model_shader->set_uniform("shininess", 64.0f);
 
         for(const auto& obj : frame->get_models()) {
             model.translate(frame->get_structure()->get_center_vector());
@@ -183,7 +187,11 @@ void StructureRenderer::draw_atoms(const Structure* structure) {
 
     // set general properties
     model_shader->set_uniform("view", this->scene->view);
-    model_shader->set_uniform("lightpos", QVector3D(0,-1000,1));
+    model_shader->set_uniform("light_pos", QVector3D(0,-1000,1));
+    model_shader->set_uniform("light_color", QVector3D(1,1,1));
+    model_shader->set_uniform("ambient_strength", 0.15f);
+    model_shader->set_uniform("specular_strength", 0.5f);
+    model_shader->set_uniform("shininess", 64.0f);
 
     // get the vector that positions the unitcell at the origin
     auto ctr_vector = structure->get_center_vector();
@@ -236,7 +244,11 @@ void StructureRenderer::draw_bonds(const Structure* structure) {
 
     // set general properties
     model_shader->set_uniform("view", this->scene->view);
-    model_shader->set_uniform("lightpos", QVector3D(0,-1000,1));
+    model_shader->set_uniform("light_pos", QVector3D(0,-1000,1));
+    model_shader->set_uniform("light_color", QVector3D(1,1,1));
+    model_shader->set_uniform("ambient_strength", 0.15f);
+    model_shader->set_uniform("specular_strength", 0.5f);
+    model_shader->set_uniform("shininess", 64.0f);
 
     // get the vector that positions the unitcell at the origin
     auto ctr_vector = structure->get_center_vector();
