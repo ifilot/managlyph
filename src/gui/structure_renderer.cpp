@@ -70,6 +70,8 @@ void StructureRenderer::draw_single_object(const std::shared_ptr<Model>& obj,
     shader->set_uniform("diffuse_strength",  ls.diffuse_strength);
     shader->set_uniform("specular_strength", ls.specular_strength);
     shader->set_uniform("shininess",         ls.shininess);
+    shader->set_uniform("edge_strength",     ls.edge_strength);
+    shader->set_uniform("edge_power",        ls.edge_power);
 
     shader->set_uniform("color", obj->get_color());
 
@@ -227,6 +229,7 @@ void StructureRenderer::draw_atoms(const Structure* structure) {
     for(const Atom& atom : structure->get_atoms()) {
         // grab atom color
         auto col = AtomSettings::get().get_atom_color_qvector(AtomSettings::get().get_name_from_elnr(atom.atnr));
+        QVector4D col4(col, 1.0f);
 
         // grab atom radius
         double radius = AtomSettings::get().get_atom_radius_from_elnr(atom.atnr);
@@ -244,7 +247,7 @@ void StructureRenderer::draw_atoms(const Structure* structure) {
         // set per-atom properties
         model_shader->set_uniform("mvp", mvp);
         model_shader->set_uniform("model", model);
-        model_shader->set_uniform("color", col);
+        model_shader->set_uniform("color", col4);
 
         // draw atom
         f->glDrawElements(GL_TRIANGLES, this->sphere_indices.size(), GL_UNSIGNED_INT, 0);
@@ -282,7 +285,7 @@ void StructureRenderer::draw_bonds(const Structure* structure) {
     for(unsigned int i=0; i<structure->get_nr_bonds(); i++) {
         const Bond& bond = structure->get_bond(i);
 
-        QVector3D col;
+        QVector4D col;
 
         model.setToIdentity();
         model *= (this->scene->arcball_rotation) * (this->scene->rotation_matrix);
@@ -295,7 +298,9 @@ void StructureRenderer::draw_bonds(const Structure* structure) {
 
         model_shader->set_uniform("mvp", mvp);
         model_shader->set_uniform("model", model);
-        col = AtomSettings::get().get_atom_color_qvector(AtomSettings::get().get_name_from_elnr(bond.atom1.atnr));
+        col = QVector4D(AtomSettings::get().get_atom_color_qvector(
+            AtomSettings::get().get_name_from_elnr(bond.atom1.atnr)), 1.0f
+        );
         model_shader->set_uniform("color", col);
 
         // draw bond
@@ -312,7 +317,9 @@ void StructureRenderer::draw_bonds(const Structure* structure) {
 
         model_shader->set_uniform("mvp", mvp);
         model_shader->set_uniform("model", model);
-        col = AtomSettings::get().get_atom_color_qvector(AtomSettings::get().get_name_from_elnr(bond.atom2.atnr));
+        col = QVector4D(AtomSettings::get().get_atom_color_qvector(
+            AtomSettings::get().get_name_from_elnr(bond.atom2.atnr)), 1.0f
+        );
         model_shader->set_uniform("color", col);
 
         // draw bond
@@ -333,6 +340,8 @@ void StructureRenderer::set_lighting_uniforms(ShaderProgram* shader, const Light
     shader->set_uniform("diffuse_strength",  settings.diffuse_strength);
     shader->set_uniform("specular_strength", settings.specular_strength);
     shader->set_uniform("shininess", settings.shininess);
+    shader->set_uniform("edge_strength", settings.edge_strength);
+    shader->set_uniform("edge_power", settings.edge_power);
 }
 
 /**

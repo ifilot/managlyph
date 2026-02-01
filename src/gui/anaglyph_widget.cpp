@@ -65,16 +65,25 @@ void AnaglyphWidget::rotate_scene(float angle) {
  * @param specular_strength
  * @param shininess
  */
-void AnaglyphWidget::set_atom_lighting_settings(float ambient, float diffuse, float specular, float shininess) {
+void AnaglyphWidget::set_atom_lighting_settings(float ambient,
+                                                float diffuse,
+                                                float specular,
+                                                float shininess,
+                                                float edge_strength,
+                                                float edge_power) {
     this->scene->atom_lighting.ambient_strength = ambient;
     this->scene->atom_lighting.diffuse_strength = diffuse;
     this->scene->atom_lighting.specular_strength = specular;
     this->scene->atom_lighting.shininess = shininess;
+    this->scene->atom_lighting.edge_strength = edge_strength;
+    this->scene->atom_lighting.edge_power = edge_power;
     QSettings settings;
     settings.setValue("lighting/atoms/ambient_strength", ambient);
     settings.setValue("lighting/atoms/diffuse_strength", diffuse);
     settings.setValue("lighting/atoms/specular_strength", specular);
     settings.setValue("lighting/atoms/shininess", shininess);
+    settings.setValue("lighting/atoms/edge_strength", edge_strength);
+    settings.setValue("lighting/atoms/edge_power", edge_power);
     this->update();
 }
 
@@ -85,16 +94,25 @@ void AnaglyphWidget::set_atom_lighting_settings(float ambient, float diffuse, fl
  * @param specular_strength
  * @param shininess
  */
-void AnaglyphWidget::set_object_lighting_settings(float ambient, float diffuse, float specular, float shininess) {
+void AnaglyphWidget::set_object_lighting_settings(float ambient,
+                                                  float diffuse,
+                                                  float specular,
+                                                  float shininess,
+                                                  float edge_strength,
+                                                  float edge_power) {
     this->scene->object_lighting.ambient_strength = ambient;
     this->scene->object_lighting.diffuse_strength = diffuse;
     this->scene->object_lighting.specular_strength = specular;
     this->scene->object_lighting.shininess = shininess;
+    this->scene->object_lighting.edge_strength = edge_strength;
+    this->scene->object_lighting.edge_power = edge_power;
     QSettings settings;
     settings.setValue("lighting/objects/ambient_strength", ambient);
     settings.setValue("lighting/objects/diffuse_strength", diffuse);
     settings.setValue("lighting/objects/specular_strength", specular);
     settings.setValue("lighting/objects/shininess", shininess);
+    settings.setValue("lighting/objects/edge_strength", edge_strength);
+    settings.setValue("lighting/objects/edge_power", edge_power);
     this->update();
 }
 
@@ -108,7 +126,9 @@ LightingSettings AnaglyphWidget::get_atom_lighting_settings() const {
         this->scene->atom_lighting.ambient_strength,
         this->scene->atom_lighting.diffuse_strength,
         this->scene->atom_lighting.specular_strength,
-        this->scene->atom_lighting.shininess
+        this->scene->atom_lighting.shininess,
+        this->scene->atom_lighting.edge_strength,
+        this->scene->atom_lighting.edge_power
     };
 }
 
@@ -122,7 +142,9 @@ LightingSettings AnaglyphWidget::get_object_lighting_settings() const {
         this->scene->object_lighting.ambient_strength,
         this->scene->object_lighting.diffuse_strength,
         this->scene->object_lighting.specular_strength,
-        this->scene->object_lighting.shininess
+        this->scene->object_lighting.shininess,
+        this->scene->object_lighting.edge_strength,
+        this->scene->object_lighting.edge_power
     };
 }
 
@@ -136,6 +158,10 @@ void AnaglyphWidget::load_lighting_settings() {
         settings.value("lighting/atoms/specular_strength", this->scene->atom_lighting.specular_strength).toFloat();
     this->scene->atom_lighting.shininess =
         settings.value("lighting/atoms/shininess", this->scene->atom_lighting.shininess).toFloat();
+    this->scene->atom_lighting.edge_strength =
+        settings.value("lighting/atoms/edge_strength", this->scene->atom_lighting.edge_strength).toFloat();
+    this->scene->atom_lighting.edge_power =
+        settings.value("lighting/atoms/edge_power", this->scene->atom_lighting.edge_power).toFloat();
     this->scene->object_lighting.ambient_strength =
         settings.value("lighting/objects/ambient_strength", this->scene->object_lighting.ambient_strength).toFloat();
     this->scene->object_lighting.diffuse_strength =
@@ -144,6 +170,10 @@ void AnaglyphWidget::load_lighting_settings() {
         settings.value("lighting/objects/specular_strength", this->scene->object_lighting.specular_strength).toFloat();
     this->scene->object_lighting.shininess =
         settings.value("lighting/objects/shininess", this->scene->object_lighting.shininess).toFloat();
+    this->scene->object_lighting.edge_strength =
+        settings.value("lighting/objects/edge_strength", this->scene->object_lighting.edge_strength).toFloat();
+    this->scene->object_lighting.edge_power =
+        settings.value("lighting/objects/edge_power", this->scene->object_lighting.edge_power).toFloat();
 }
 
 /**
@@ -299,13 +329,31 @@ void AnaglyphWidget::initializeGL() {
     emit(opengl_ready());
 }
 
+QSize AnaglyphWidget::render_size() {
+    const int width = std::max(1, this->scene->canvas_width * supersample_scale);
+    const int height = std::max(1, this->scene->canvas_height * supersample_scale);
+    return QSize(width, height);
+}
+
+void AnaglyphWidget::set_render_viewport() {
+    const QSize target = render_size();
+    glViewport(0, 0, target.width(), target.height());
+}
+
+void AnaglyphWidget::set_screen_viewport() {
+    glViewport(0, 0, this->scene->canvas_width, this->scene->canvas_height);
+}
+
 /**
  * @brief      Render scene
  */
 void AnaglyphWidget::paintGL() {
+    this->set_screen_viewport();
+
     // paint coordinate axes to its own framebuffer
     if(this->flag_axis_enabled) {
         glBindFramebuffer(GL_FRAMEBUFFER, this->framebuffers[FrameBuffer::COORDINATE_AXES]);
+        this->set_render_viewport();
         glEnable(GL_DEPTH_TEST);
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -333,6 +381,7 @@ void AnaglyphWidget::paintGL() {
         shader->set_uniform("regular_texture", 0);
 
         // draw quad on screen
+        this->set_screen_viewport();
         this->quad_vao.bind();
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, this->texture_color_buffers[FrameBuffer::COORDINATE_AXES]);
@@ -384,13 +433,17 @@ void AnaglyphWidget::resizeGL(int w, int h) {
     this->scene->canvas_width = w;
     this->scene->canvas_height = h;
 
+    this->set_screen_viewport();
+
+    const QSize target = render_size();
+
     // resize textures and render buffers
     for (unsigned int i = 0; i < FrameBuffer::NR_FRAMEBUFFERS; ++i) {
         glBindTexture(GL_TEXTURE_2D, this->texture_color_buffers[i]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, target.width(), target.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
         glBindRenderbuffer(GL_RENDERBUFFER, this->rbo[i]);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, target.width(), target.height());
     }
 }
 
@@ -567,8 +620,8 @@ void AnaglyphWidget::set_stereo(QString stereo_name) {
  */
 void AnaglyphWidget::load_shaders() {
     // create regular shaders
-    shader_manager->create_shader_program("atombond_shader", ShaderProgramType::ModelShader, ":/assets/shaders/phong.vs", ":/assets/shaders/phong.fs");   // does not transparancy channel
-    shader_manager->create_shader_program("object_shader", ShaderProgramType::ModelShader, ":/assets/shaders/model.vs", ":/assets/shaders/model.fs");    // uses transparency channel
+    shader_manager->create_shader_program("atombond_shader", ShaderProgramType::ModelShader, ":/assets/shaders/phong.vs", ":/assets/shaders/phong.fs");
+    shader_manager->create_shader_program("object_shader", ShaderProgramType::ModelShader, ":/assets/shaders/phong.vs", ":/assets/shaders/phong.fs");
     shader_manager->create_shader_program("axes_shader", ShaderProgramType::AxesShader, ":/assets/shaders/axes.vs", ":/assets/shaders/axes.fs");
     shader_manager->create_shader_program("silhouette_shader", ShaderProgramType::SilhouetteShader, ":/assets/shaders/silhouette.vs", ":/assets/shaders/silhouette.fs");
 
@@ -590,6 +643,9 @@ void AnaglyphWidget::load_shaders() {
  * @brief      Build a canvas used for stereographic rendering
  */
 void AnaglyphWidget::build_framebuffers() {
+    const int render_width = std::max(1, this->geometry().width() * supersample_scale);
+    const int render_height = std::max(1, this->geometry().height() * supersample_scale);
+
     // initialize frame buffers
     glGenFramebuffers(FrameBuffer::NR_FRAMEBUFFERS, this->framebuffers);
     glGenTextures(FrameBuffer::NR_FRAMEBUFFERS, this->texture_color_buffers);
@@ -598,13 +654,13 @@ void AnaglyphWidget::build_framebuffers() {
     for (unsigned int i = 0; i < FrameBuffer::NR_FRAMEBUFFERS; ++i) {
         glBindFramebuffer(GL_FRAMEBUFFER, this->framebuffers[i]);
         glBindTexture(GL_TEXTURE_2D, this->texture_color_buffers[i]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, this->geometry().width(), this->geometry().height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, render_width, render_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, this->texture_color_buffers[i], 0);
 
         glBindRenderbuffer(GL_RENDERBUFFER, this->rbo[i]);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, this->geometry().width(), this->geometry().height());
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, render_width, render_height);
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, this->rbo[i]);
 
         if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
@@ -673,6 +729,7 @@ void AnaglyphWidget::paint_regular() {
 
     // regular draw call to the STRUCTURE_NORMAL framebuffer
     glBindFramebuffer(GL_FRAMEBUFFER, this->framebuffers[FrameBuffer::STRUCTURE_NORMAL]);
+    this->set_render_viewport();
     glEnable(GL_DEPTH_TEST);
     glClearColor(this->tint, this->tint, this->tint, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -680,6 +737,7 @@ void AnaglyphWidget::paint_regular() {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // bundle both framebuffers and draw on the canvas
+    this->set_screen_viewport();
     glDisable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT);
     ShaderProgram *canvas_shader = this->shader_manager->get_shader_program("canvas_shader");
@@ -723,6 +781,7 @@ void AnaglyphWidget::paint_stereographic() {
     this->scene->view.setToIdentity();
     this->scene->view.lookAt(this->scene->camera_position - QVector3D(eye_sep / 2.0, 0.0, 0.0), lookat, QVector3D(0.0, 0.0, 1.0));
     glBindFramebuffer(GL_FRAMEBUFFER, this->framebuffers[FrameBuffer::STRUCTURE_LEFT]);
+    this->set_render_viewport();
     glEnable(GL_DEPTH_TEST);
     glClearColor(this->tint, this->tint, this->tint, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -733,6 +792,7 @@ void AnaglyphWidget::paint_stereographic() {
     this->scene->view.setToIdentity();
     this->scene->view.lookAt(this->scene->camera_position + QVector3D(eye_sep / 2.0, 0.0, 0.0), lookat, QVector3D(0.0, 0.0, 1.0));
     glBindFramebuffer(GL_FRAMEBUFFER, this->framebuffers[FrameBuffer::STRUCTURE_RIGHT]);
+    this->set_render_viewport();
     glEnable(GL_DEPTH_TEST);
     glClearColor(this->tint, this->tint, this->tint, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -743,6 +803,7 @@ void AnaglyphWidget::paint_stereographic() {
     glDisable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT);
     glBindFramebuffer(GL_FRAMEBUFFER, this->framebuffers[FrameBuffer::ANAGLYPH_LEFT]);
+    this->set_render_viewport();
     ShaderProgram *canvas_shader = this->shader_manager->get_shader_program("canvas_shader");
     canvas_shader->bind();
 
@@ -766,6 +827,7 @@ void AnaglyphWidget::paint_stereographic() {
     glDisable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT);
     glBindFramebuffer(GL_FRAMEBUFFER, this->framebuffers[FrameBuffer::ANAGLYPH_RIGHT]);
+    this->set_render_viewport();
     canvas_shader->bind();
 
     // update screen coordinates
@@ -783,6 +845,7 @@ void AnaglyphWidget::paint_stereographic() {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // combine left and right for anaglyph
+    this->set_screen_viewport();
     glDisable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT);
 

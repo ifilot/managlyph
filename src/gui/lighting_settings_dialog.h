@@ -43,10 +43,15 @@ private:
         QSlider* ambient_slider;
         QSlider* specular_slider;
         QSlider* shininess_slider;
+        QSlider* edge_slider;
+        QSlider* edge_power_slider;
+
         QLabel* diffuse_value;
         QLabel* ambient_value;
         QLabel* specular_value;
         QLabel* shininess_value;
+        QLabel* edge_value;
+        QLabel* edge_power_value;
     };
 
     void apply_settings();

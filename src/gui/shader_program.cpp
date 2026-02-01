@@ -81,6 +81,8 @@ void ShaderProgram::add_uniforms() {
         this->uniforms.emplace("ambient_strength",  this->m_program->uniformLocation("ambient_strength"));
         this->uniforms.emplace("specular_strength", this->m_program->uniformLocation("specular_strength"));
         this->uniforms.emplace("shininess",         this->m_program->uniformLocation("shininess"));
+        this->uniforms.emplace("edge_strength",     this->m_program->uniformLocation("edge_strength"));
+        this->uniforms.emplace("edge_power",        this->m_program->uniformLocation("edge_power"));
     }
 
     if (this->type == ShaderProgramType::StereoscopicShader) {

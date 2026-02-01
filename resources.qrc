@@ -13,6 +13,7 @@
         <file>assets/icon/save.png</file>
         <file>assets/icon/open.png</file>
         <file>assets/icon/close.png</file>
+        <file>assets/icon/tue-logo.png</file>
         <file>assets/icon/info.png</file>
         <file>assets/icon/interlaced_checkerboard_lr_32.png</file>
         <file>assets/icon/interlaced_checkerboard_rl_32.png</file>
@@ -51,7 +52,5 @@
         <file>assets/shaders/simplecanvas.fs</file>
         <file>assets/shaders/simplecanvas.vs</file>
         <file>assets/containers/C8H8.abo</file>
-        <file>assets/shaders/model.fs</file>
-        <file>assets/shaders/model.vs</file>
     </qresource>
 </RCC>

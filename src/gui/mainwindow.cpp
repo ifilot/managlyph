@@ -323,17 +323,46 @@ void MainWindow::exit() {
  */
 void MainWindow::about() {
     QMessageBox message_box;
-    message_box.setStyleSheet("QLabel{min-width: 250px; font-weight: normal;}");
-    message_box.setText(PROGRAM_NAME
-                        " version "
-                        PROGRAM_VERSION
-                        ".\n\nAuthor:\nIvo Filot <i.a.w.filot@tue.nl>\n\n"
-                        PROGRAM_NAME " is licensed under the GPLv3 license.\n\n"
-                        PROGRAM_NAME " is dynamically linked to Qt, which is licensed under LGPLv3.\n");
-    message_box.setIcon(QMessageBox::Information);
+
     message_box.setWindowTitle("About " PROGRAM_NAME);
-    message_box.setWindowIcon(QIcon(":/assets/icon/managlyph_256.ico"));
+    message_box.setIcon(QMessageBox::Information);
     message_box.setIconPixmap(QPixmap(":/assets/icon/managlyph_256.ico"));
+
+    message_box.setTextFormat(Qt::RichText);
+    message_box.setTextInteractionFlags(Qt::TextBrowserInteraction);
+    message_box.setTextInteractionFlags(Qt::TextBrowserInteraction);
+
+    QString text =
+        "<b>" PROGRAM_NAME "</b> version " PROGRAM_VERSION "<br><br>"
+
+        "<b>Author</b><br>"
+        "Ivo Filot &lt;i.a.w.filot@tue.nl&gt;<br><br>"
+
+        "<b>License</b><br>"
+        PROGRAM_NAME " is free software released under the "
+        "GNU General Public License v3.0 (GPL-3.0).<br><br>"
+
+        "This software uses the Qt framework, which is available under the "
+        "GNU Lesser General Public License v3.0 (LGPL-3.0).<br><br>"
+
+        "<b>Sponsorship</b><br>"
+        "This project has been co-financed through the TU/e Boost program.";
+
+    message_box.setText(text);
+
+    QString info =
+        "<p align='center'>"
+        "<img src=':/assets/icon/tue-logo.png' width='140'><br>"
+        "<a href='https://drive.tue.nl/projects/3d-visualization-with-artificial-intelligence-and-projection/'>"
+        "Project sponsorship details"
+        "</a></p>";
+
+    message_box.setInformativeText(info);
+
+    message_box.setStyleSheet(
+        "QLabel { min-width: 320px; font-weight: normal; }"
+    );
+
     message_box.exec();
 }
 

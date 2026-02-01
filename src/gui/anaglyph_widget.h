@@ -71,6 +71,8 @@ class AnaglyphWidget : public QOpenGLWidget, protected QOpenGLFunctions {
     Q_OBJECT
 
 private:
+    static constexpr int supersample_scale = 2;
+
     QPoint m_lastPos;
 
     QString root_path;
@@ -213,7 +215,12 @@ public:
      * @param specular
      * @param shininess
      */
-    void set_atom_lighting_settings(float ambient, float diffuse, float specular, float shininess);
+    void set_atom_lighting_settings(float ambient,
+                                    float diffuse,
+                                    float specular,
+                                    float shininess,
+                                    float edge_strength,
+                                    float edge_power);
 
     /**
      * @brief Set lighting settings for objects.
@@ -223,7 +230,12 @@ public:
      * @param specular
      * @param shininess
      */
-    void set_object_lighting_settings(float ambient, float diffuse, float specular, float shininess);
+    void set_object_lighting_settings(float ambient,
+                                      float diffuse,
+                                      float specular,
+                                      float shininess,
+                                      float edge_strength,
+                                      float edge_power);
 
     /**
      * @brief Get lighting settings for atoms and bonds.
@@ -339,6 +351,21 @@ private:
      * @brief      Stereographic draw call
      */
     void paint_stereographic();
+
+    /**
+     * @brief Set viewport for offscreen rendering.
+     */
+    void set_render_viewport();
+
+    /**
+     * @brief Set viewport for onscreen rendering.
+     */
+    void set_screen_viewport();
+
+    /**
+     * @brief Get render target size for supersampling.
+     */
+    QSize render_size();
 
 signals:
     /**
