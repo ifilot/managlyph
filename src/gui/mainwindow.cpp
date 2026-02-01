@@ -21,6 +21,14 @@
 
 #include "mainwindow.h"
 
+#include <QListWidget>
+#include <QDialog>
+#include <QVBoxLayout>
+#include <QLabel>
+#include <QDialogButtonBox>
+#include <QAbstractItemView>
+#include <QLineEdit>
+
 /**
  * @brief      Class for main window.
  */
@@ -327,22 +335,67 @@ void MainWindow::open_library() {
         return;
     }
 
-    bool ok = false;
-    QString selection = QInputDialog::getItem(
-        this,
-        tr("Load from library"),
-        tr("Select a library file:"),
-        entries,
-        0,
-        false,
-        &ok
-    );
+    QDialog dlg(this);
+    dlg.setWindowTitle(tr("Open from library"));
+    dlg.resize(450, 550);
 
-    if (!ok || selection.isEmpty()) {
+    QVBoxLayout *layout = new QVBoxLayout(&dlg);
+
+    QLabel *label = new QLabel(tr("Select a library file:"));
+    layout->addWidget(label);
+
+    // --- Filter box ---
+    QLineEdit *filter = new QLineEdit();
+    filter->setPlaceholderText(tr("Filter files..."));
+    layout->addWidget(filter);
+
+    // --- List widget ---
+    QListWidget *list = new QListWidget();
+    list->setSelectionMode(QAbstractItemView::SingleSelection);
+    list->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+    list->setIconSize(QSize(18, 18));
+    list->setSortingEnabled(true);
+    layout->addWidget(list);
+
+    // System file icon
+    QIcon fileIcon(":/assets/icon/abofile.png");
+
+    for (const QString &entry : entries) {
+        QListWidgetItem *item = new QListWidgetItem(fileIcon, entry);
+        list->addItem(item);
+    }
+
+    // --- Buttons ---
+    QDialogButtonBox *buttons = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel
+    );
+    layout->addWidget(buttons);
+
+    QObject::connect(buttons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    QObject::connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+
+    // Double-click loads immediately
+    QObject::connect(list, &QListWidget::itemDoubleClicked, &dlg, &QDialog::accept);
+
+    // --- Live filtering ---
+    QObject::connect(filter, &QLineEdit::textChanged, [list](const QString &text){
+        for (int i = 0; i < list->count(); ++i) {
+            QListWidgetItem *item = list->item(i);
+            bool match = item->text().contains(text, Qt::CaseInsensitive);
+            item->setHidden(!match);
+        }
+    });
+
+    // Focus filter so typing works immediately
+    filter->setFocus();
+
+    if (dlg.exec() != QDialog::Accepted || !list->currentItem()) {
         return;
     }
 
+    QString selection = list->currentItem()->text();
     const QString filename = dir.filePath(selection);
+
     this->interface_window->open_file(filename);
     statusBar()->showMessage("Loaded " + filename + ".");
     this->setWindowTitle(QFileInfo(filename).fileName() + " - " + QString(PROGRAM_NAME));
