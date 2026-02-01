@@ -106,6 +106,7 @@ void AnaglyphWidget::set_object_lighting_settings(float ambient, float diffuse, 
 LightingSettings AnaglyphWidget::get_atom_lighting_settings() const {
     return LightingSettings{
         this->scene->atom_lighting.ambient_strength,
+        this->scene->atom_lighting.diffuse_strength,
         this->scene->atom_lighting.specular_strength,
         this->scene->atom_lighting.shininess
     };
@@ -119,6 +120,7 @@ LightingSettings AnaglyphWidget::get_atom_lighting_settings() const {
 LightingSettings AnaglyphWidget::get_object_lighting_settings() const {
     return LightingSettings{
         this->scene->object_lighting.ambient_strength,
+        this->scene->object_lighting.diffuse_strength,
         this->scene->object_lighting.specular_strength,
         this->scene->object_lighting.shininess
     };
@@ -128,16 +130,20 @@ void AnaglyphWidget::load_lighting_settings() {
     QSettings settings;
     this->scene->atom_lighting.ambient_strength =
         settings.value("lighting/atoms/ambient_strength", this->scene->atom_lighting.ambient_strength).toFloat();
+    this->scene->atom_lighting.diffuse_strength =
+        settings.value("lighting/atoms/diffuse_strength", this->scene->atom_lighting.diffuse_strength).toFloat();
     this->scene->atom_lighting.specular_strength =
         settings.value("lighting/atoms/specular_strength", this->scene->atom_lighting.specular_strength).toFloat();
     this->scene->atom_lighting.shininess =
         settings.value("lighting/atoms/shininess", this->scene->atom_lighting.shininess).toFloat();
     this->scene->object_lighting.ambient_strength =
-        settings.value("lighting/objects/ambient_strength", this->scene->atom_lighting.ambient_strength).toFloat();
+        settings.value("lighting/objects/ambient_strength", this->scene->object_lighting.ambient_strength).toFloat();
+    this->scene->object_lighting.diffuse_strength =
+        settings.value("lighting/objects/diffuse_strength", this->scene->object_lighting.diffuse_strength).toFloat();
     this->scene->object_lighting.specular_strength =
-        settings.value("lighting/objects/specular_strength", this->scene->atom_lighting.specular_strength).toFloat();
+        settings.value("lighting/objects/specular_strength", this->scene->object_lighting.specular_strength).toFloat();
     this->scene->object_lighting.shininess =
-        settings.value("lighting/objects/shininess", this->scene->atom_lighting.shininess).toFloat();
+        settings.value("lighting/objects/shininess", this->scene->object_lighting.shininess).toFloat();
 }
 
 /**
