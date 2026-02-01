@@ -1,0 +1,33 @@
+/* Sidebar background */
+.wy-side-nav-search,
+.wy-nav-side {
+    background: #2c2c36;  /* ← change to match your logo */
+}
+
+/* Sidebar section titles */
+.wy-menu-vertical header,
+.wy-menu-vertical p.caption {
+    color: #ffffff;
+}
+
+/* Links in sidebar */
+.wy-menu-vertical a {
+    color: #dcdcdc;
+}
+
+/* Active link highlight */
+.wy-menu-vertical a.current {
+    background-color: #2e2e48;
+    color: #ffffff;
+}
+
+/* Search box area */
+.wy-side-nav-search {
+    border-bottom: 1px solid #333;
+}
+
+.github-link a {
+    background: #24292e;
+    padding: 6px 10px;
+    border-radius: 4px;
+}
