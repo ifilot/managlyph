@@ -377,8 +377,8 @@ void InterfaceWindow::handle_new_container() {
     float maxdist = this->container->get_max_dim();
     qDebug() << "Parsing new frame to Anaglyph Widget class";
     qDebug() << "Max distance: " << maxdist;
-    //this->anaglyph_widget->set_camera_zoom(std::max(20.f, maxdist * 2.0f));
-    this->anaglyph_widget->set_camera_zoom(20.0f);
+    float camera_distance = std::max(5.0f, maxdist * 1.5f);
+    this->anaglyph_widget->set_camera_zoom(camera_distance);
     this->anaglyph_widget->set_frame(this->container->frame(this->cur_frame));
 }
 
