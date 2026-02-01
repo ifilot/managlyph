@@ -3,7 +3,7 @@
 ; ============================
 
 !define APP_NAME "managlyph"
-!define APP_VERSION "1.1.0"
+!define APP_VERSION "1.1.1"
 !define APP_PUBLISHER "Ivo Filot"
 !define APP_EXE "managlyph.exe"
 

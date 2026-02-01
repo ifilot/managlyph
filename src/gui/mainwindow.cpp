@@ -109,7 +109,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
     // create actions for file menu
     action_open->setText(tr("Open"));
     action_open->setShortcuts(QKeySequence::Open);
-    action_open_library->setText(tr("Load from library"));
+    action_open_library->setText(tr("Open from library"));
     action_quit->setText(tr("Quit"));
     action_quit->setShortcuts(QKeySequence::Quit);
     action_quit->setShortcut(Qt::CTRL | Qt::Key_Q);
