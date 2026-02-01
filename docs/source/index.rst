@@ -6,9 +6,12 @@
 Managlyph documentation
 =======================
 
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
+Managlyph is a powerful educational tool for visualizing atomic and molecular
+structures in 3D. It enables students and educators to explore atomic orbitals,
+reaction mechanisms, and molecular properties interactively, enhancing learning
+through dynamic 3D visualizations using red/cyan glasses or 3D monitors. Its
+versatility and ease of use make it an invaluable resource for teaching complex
+chemical concepts.
 
 
 .. toctree::
