@@ -64,6 +64,27 @@ add_executable(managlyph
     resources.qrc
 )
 
+# --- Zstandard (works for MSYS2, vcpkg, system Linux, etc.) ---
+find_package(ZSTD)
+
+if (TARGET ZSTD::ZSTD)
+    message(STATUS "Using modern ZSTD::ZSTD target")
+    target_link_libraries(managlyph PRIVATE ZSTD::ZSTD)
+else()
+    message(STATUS "Using MSYS2/manual ZSTD linkage")
+
+    find_path(ZSTD_INCLUDE_DIR zstd.h
+        PATHS /mingw64/include /usr/include
+        REQUIRED)
+
+    find_library(ZSTD_LIBRARY zstd
+        PATHS /mingw64/lib /usr/lib
+        REQUIRED)
+
+    target_include_directories(managlyph PRIVATE ${ZSTD_INCLUDE_DIR})
+    target_link_libraries(managlyph PRIVATE ${ZSTD_LIBRARY})
+endif()
+
 target_link_libraries(managlyph PRIVATE
     Qt5::Core
     Qt5::Widgets
