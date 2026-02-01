@@ -21,6 +21,9 @@
 
 #include "container_loader.h"
 
+#include <array>
+#include <cmath>
+
 /**
  * @brief ContainerLoader constructor
  */
@@ -47,8 +50,51 @@ std::shared_ptr<Container> ContainerLoader::load_data_abo(const std::string& pat
             throw std::runtime_error("Corrupt ABO file (unexpected EOF): " + path);
     };
 
+    enum class NormalEncoding {
+        Float32,
+        Oct16
+    };
+
+    auto decode_octahedral_normal = [](int16_t nx, int16_t ny) {
+        constexpr float scale = 32767.0f;
+        glm::vec3 n(static_cast<float>(nx) / scale,
+                    static_cast<float>(ny) / scale,
+                    0.0f);
+        n.z = 1.0f - std::abs(n.x) - std::abs(n.y);
+        if (n.z < 0.0f) {
+            const float old_x = n.x;
+            n.x = (1.0f - std::abs(n.y)) * (old_x >= 0.0f ? 1.0f : -1.0f);
+            n.y = (1.0f - std::abs(old_x)) * (n.y >= 0.0f ? 1.0f : -1.0f);
+        }
+        const float length = std::sqrt(n.x * n.x + n.y * n.y + n.z * n.z);
+        if (length > 0.0f) {
+            n /= length;
+        }
+        return n;
+    };
+
     uint16_t nr_frames = 0;
     read_or_throw(reinterpret_cast<char*>(&nr_frames), sizeof(nr_frames));
+
+    NormalEncoding normal_encoding = NormalEncoding::Float32;
+    if (nr_frames == 0) {
+        std::array<char, 4> magic{};
+        read_or_throw(magic.data(), magic.size());
+        if (std::string(magic.data(), magic.size()) != "ABOF")
+            throw std::runtime_error("Unsupported ABO file header: " + path);
+
+        uint8_t version = 0;
+        uint8_t flags = 0;
+        read_or_throw(reinterpret_cast<char*>(&version), sizeof(version));
+        read_or_throw(reinterpret_cast<char*>(&flags), sizeof(flags));
+        if (version != 1)
+            throw std::runtime_error("Unsupported ABO format version: " + std::to_string(version));
+
+        normal_encoding = NormalEncoding::Oct16;
+        read_or_throw(reinterpret_cast<char*>(&nr_frames), sizeof(nr_frames));
+        qDebug() << "ABOF header detected. Version:" << version << "flags:" << flags;
+    }
+
     qDebug() << "Number of frames:" << nr_frames;
 
     for (uint16_t f = 0; f < nr_frames; ++f) {
@@ -107,7 +153,15 @@ std::shared_ptr<Container> ContainerLoader::load_data_abo(const std::string& pat
 
             for (uint32_t k = 0; k < nr_vertices; ++k) {
                 read_or_throw(reinterpret_cast<char*>(&v_positions[k][0]), 3 * sizeof(float));
-                read_or_throw(reinterpret_cast<char*>(&normals[k][0]), 3 * sizeof(float));
+                if (normal_encoding == NormalEncoding::Float32) {
+                    read_or_throw(reinterpret_cast<char*>(&normals[k][0]), 3 * sizeof(float));
+                } else {
+                    int16_t nx = 0;
+                    int16_t ny = 0;
+                    read_or_throw(reinterpret_cast<char*>(&nx), sizeof(nx));
+                    read_or_throw(reinterpret_cast<char*>(&ny), sizeof(ny));
+                    normals[k] = decode_octahedral_normal(nx, ny);
+                }
             }
 
             uint32_t nr_faces = 0;
