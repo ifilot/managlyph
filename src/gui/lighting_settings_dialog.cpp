@@ -60,6 +60,8 @@ LightingSettingsDialog::LightingSettingsDialog(AnaglyphWidget* anaglyph_widget, 
 
     connect_controls(atom_controls);
     connect_controls(object_controls);
+
+    this->resize(640,480);
 }
 
 void LightingSettingsDialog::sync_from_widget() {

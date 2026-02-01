@@ -239,7 +239,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
 
     // set Window properties
     this->setWindowTitle(QString(PROGRAM_NAME) + " " + QString(PROGRAM_VERSION));
-    this->resize(800,600);
+    this->resize(1280,960);
 
     qDebug() << "Done building MainWindow";
 }

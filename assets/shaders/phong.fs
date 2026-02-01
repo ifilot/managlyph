@@ -4,7 +4,7 @@ in vec3 vertex_direction_eyespace;   // from fragment to camera
 in vec3 lightdirection_eyespace;     // from fragment to light
 in vec3 normal_eyespace;
 
-uniform vec4  color;                 // base surface color
+uniform vec3  color;                 // base surface color
 uniform vec3  light_color;           // light intensity/color
 uniform float diffuse_strength;
 uniform float ambient_strength;
@@ -33,7 +33,7 @@ void main()
     float spec = pow(NdotH, shininess);
 
     // Energy-aware specular reduction
-    vec3 specular = specular_strength * spec * light_color * (1.0 - color.rgb);
+    vec3 specular = specular_strength * spec * light_color * (1.0 - color);
 
     // Combine lighting
     vec3 result = (ambient + diffuse) * color.rgb + specular;
@@ -41,5 +41,5 @@ void main()
     // Gamma correction (important!)
     result = pow(result, vec3(1.0/2.2));
 
-    fragColor = vec4(result, color.a);
+    fragColor = vec4(result, 1.0);
 }
