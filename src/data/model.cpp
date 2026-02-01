@@ -30,6 +30,12 @@ Model::Model(std::vector<glm::vec3> _positions, std::vector<glm::vec3> _normals,
     positions(_positions),
     normals(_normals),
     indices(_indices) {
+
+    if(indices.size() < 24) {
+        for(const auto& idx : this->indices) {
+            qDebug() << idx;
+        }
+    }
 }
 
 /**

@@ -377,7 +377,8 @@ void InterfaceWindow::handle_new_container() {
     float maxdist = this->container->get_max_dim();
     qDebug() << "Parsing new frame to Anaglyph Widget class";
     qDebug() << "Max distance: " << maxdist;
-    this->anaglyph_widget->set_camera_zoom(std::max(20.f, maxdist * 2.0f));
+    float camera_distance = std::max(5.0f, maxdist * 1.5f);
+    this->anaglyph_widget->set_camera_zoom(camera_distance);
     this->anaglyph_widget->set_frame(this->container->frame(this->cur_frame));
 }
 
@@ -422,7 +423,7 @@ void InterfaceWindow::load_default_file() {
 
     qDebug() << "Creating custom molecule";
 
-    const QString filename = "C8H8.abo";
+    const QString filename = "cubane_fb.abo";
     QTemporaryDir tmp_dir;
     QFile::copy(":/assets/containers/" + filename, tmp_dir.path() + "/" + filename);
     this->open_file(tmp_dir.path() + "/" + filename);

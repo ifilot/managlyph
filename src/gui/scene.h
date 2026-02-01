@@ -46,6 +46,15 @@ enum class CameraMode {
     ORTHOGRAPHIC
 };
 
+struct LightingSettings {
+    float ambient_strength = 0.15f;
+    float diffuse_strength = 1.0f;
+    float specular_strength = 1.0f;
+    float shininess = 64.0f;
+    float edge_strength = 3.0f;
+    float edge_power = 3.0f;
+};
+
 class Scene {
 public:
     QMatrix4x4 projection;
@@ -59,6 +68,8 @@ public:
     int canvas_height;
 
     CameraMode camera_mode = CameraMode::PERSPECTIVE;
+    LightingSettings atom_lighting;
+    LightingSettings object_lighting;
 
     Scene();
 

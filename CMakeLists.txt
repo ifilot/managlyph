@@ -20,8 +20,14 @@ execute_process(
 )
 add_compile_definitions(GIT_HASH="${GIT_HASH}")
 
-# Find Qt6 packages
-find_package(Qt6 REQUIRED COMPONENTS Widgets Charts)
+# Find Qt5 packages
+find_package(Qt5 REQUIRED COMPONENTS Widgets)
+
+# Use GLM
+find_package(glm REQUIRED)
+
+# Use Eigen
+find_package(Eigen3 REQUIRED NO_MODULE)
 
 add_executable(managlyph
     src/main.cpp
@@ -39,6 +45,7 @@ add_executable(managlyph
     src/data/orbitals/wavefunction.cpp
     src/gui/anaglyph_widget.cpp
     src/gui/interface_window.cpp
+    src/gui/lighting_settings_dialog.cpp
     src/gui/logwindow.cpp
     src/gui/mainwindow.cpp
     src/gui/orbital_widget.cpp
@@ -57,12 +64,39 @@ add_executable(managlyph
     resources.qrc
 )
 
-include_directories("src/vendor/eigen-3.4.0"
-                    "src/vendor/glm-1.0.1")
+# --- Zstandard (works for MSYS2, vcpkg, system Linux, etc.) ---
+find_package(ZSTD)
 
-target_link_libraries(managlyph PRIVATE Qt6::Core Qt6::Widgets Qt6::Charts)
+if (TARGET ZSTD::ZSTD)
+    message(STATUS "Using modern ZSTD::ZSTD target")
+    target_link_libraries(managlyph PRIVATE ZSTD::ZSTD)
+else()
+    message(STATUS "Using MSYS2/manual ZSTD linkage")
+
+    find_path(ZSTD_INCLUDE_DIR zstd.h
+        PATHS /mingw64/include /usr/include
+        REQUIRED)
+
+    find_library(ZSTD_LIBRARY zstd
+        PATHS /mingw64/lib /usr/lib
+        REQUIRED)
+
+    target_include_directories(managlyph PRIVATE ${ZSTD_INCLUDE_DIR})
+    target_link_libraries(managlyph PRIVATE ${ZSTD_LIBRARY})
+endif()
+
+target_link_libraries(managlyph PRIVATE
+    Qt5::Core
+    Qt5::Widgets
+    Eigen3::Eigen
+    glm::glm
+)
 
 set_target_properties(managlyph PROPERTIES
     WIN32_EXECUTABLE ON
     MACOSX_BUNDLE ON
 )
+
+if (WIN32)
+    target_sources(managlyph PRIVATE managlyph.rc)
+endif()

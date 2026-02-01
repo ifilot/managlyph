@@ -73,8 +73,16 @@ void ShaderProgram::add_uniforms() {
         this->uniforms.emplace("mvp", this->m_program->uniformLocation("mvp"));
         this->uniforms.emplace("model", this->m_program->uniformLocation("model"));
         this->uniforms.emplace("view", this->m_program->uniformLocation("view"));
-        this->uniforms.emplace("lightpos", this->m_program->uniformLocation("lightpos"));
         this->uniforms.emplace("color", this->m_program->uniformLocation("color"));
+
+        this->uniforms.emplace("light_pos",         this->m_program->uniformLocation("light_pos"));
+        this->uniforms.emplace("light_color",       this->m_program->uniformLocation("light_color"));
+        this->uniforms.emplace("diffuse_strength",  this->m_program->uniformLocation("diffuse_strength"));
+        this->uniforms.emplace("ambient_strength",  this->m_program->uniformLocation("ambient_strength"));
+        this->uniforms.emplace("specular_strength", this->m_program->uniformLocation("specular_strength"));
+        this->uniforms.emplace("shininess",         this->m_program->uniformLocation("shininess"));
+        this->uniforms.emplace("edge_strength",     this->m_program->uniformLocation("edge_strength"));
+        this->uniforms.emplace("edge_power",        this->m_program->uniformLocation("edge_power"));
     }
 
     if (this->type == ShaderProgramType::StereoscopicShader) {

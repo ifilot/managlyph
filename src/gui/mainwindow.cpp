@@ -21,6 +21,14 @@
 
 #include "mainwindow.h"
 
+#include <QListWidget>
+#include <QDialog>
+#include <QVBoxLayout>
+#include <QLabel>
+#include <QDialogButtonBox>
+#include <QAbstractItemView>
+#include <QLineEdit>
+
 /**
  * @brief      Class for main window.
  */
@@ -45,6 +53,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
 
     // actions for file menu
     QAction *action_open = new QAction(menu_file);
+    QAction *action_open_library = new QAction(menu_file);
     QAction *action_quit = new QAction(menu_file);
 
     // actions for projection menu
@@ -81,8 +90,11 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
 
     // actions for tools menu
     QAction *action_view_orbitals_menu = new QAction(menu_tools);
+    QAction *action_lighting_settings = new QAction(menu_tools);
     action_view_orbitals_menu->setText(tr("Orbitals menu"));
+    action_lighting_settings->setText(tr("Lighting settings"));
     menu_tools->addAction(action_view_orbitals_menu);
+    menu_tools->addAction(action_lighting_settings);
 
     // actions for help menu
     QAction *action_about = new QAction(menu_help);
@@ -97,6 +109,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
     // create actions for file menu
     action_open->setText(tr("Open"));
     action_open->setShortcuts(QKeySequence::Open);
+    action_open_library->setText(tr("Load from library"));
     action_quit->setText(tr("Quit"));
     action_quit->setShortcuts(QKeySequence::Quit);
     action_quit->setShortcut(Qt::CTRL | Qt::Key_Q);
@@ -152,6 +165,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
 
     // add actions to file menu
     menu_file->addAction(action_open);
+    menu_file->addAction(action_open_library);
     menu_file->addAction(action_quit);
 
     // add actions to projection menu
@@ -183,6 +197,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
 
     // connect actions file menu
     connect(action_open, &QAction::triggered, this, &MainWindow::open);
+    connect(action_open_library, &QAction::triggered, this, &MainWindow::open_library);
     connect(action_quit, &QAction::triggered, this, &MainWindow::exit);
 
     // connect actions projection menu (note; [this]{} is the idiomatic way by providing a functor - "this is the way")
@@ -197,6 +212,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
 
     // connect actions tools menu
     connect(action_view_orbitals_menu, &QAction::triggered, this, &MainWindow::toggle_orbitals_menu);
+    connect(action_lighting_settings, &QAction::triggered, this, &MainWindow::show_lighting_settings);
 
     // connect actions about menu
     connect(action_about, &QAction::triggered, this, &MainWindow::about);
@@ -257,9 +273,17 @@ void MainWindow::set_cli_parser(const QCommandLineParser& cli_parser) {
  * @brief      Open a new object file
  */
 void MainWindow::open() {
+    QSettings settings;
+
+    // Default to last directory, or user's home directory
+    const QString start_dir = settings.value(
+        "ui/lastOpenDir",
+        QStandardPaths::writableLocation(QStandardPaths::HomeLocation)
+    ).toString();
+
     QString filename = QFileDialog::getOpenFileName(this,
         tr("Open file"),
-        "",
+        start_dir,
         tr("Atom Bond Object files (*abo);;")
     );
 
@@ -267,11 +291,113 @@ void MainWindow::open() {
         return;
     }
 
+    // Remember directory for next time
+    settings.setValue(
+        "ui/lastOpenDir",
+        QFileInfo(filename).absolutePath()
+    );
+
     // display load time
     this->interface_window->open_file(filename);
     statusBar()->showMessage("Loaded " + filename + ".");
 
     // set main window title
+    this->setWindowTitle(QFileInfo(filename).fileName() + " - " + QString(PROGRAM_NAME));
+}
+
+/**
+ * @brief      Open a file from the bundled library.
+ */
+void MainWindow::open_library() {
+    const QString library_dir = this->find_library_directory();
+    if (library_dir.isEmpty()) {
+        QMessageBox::warning(
+            this,
+            tr("Library not found"),
+            tr("Could not locate the library folder containing .abo files.")
+        );
+        return;
+    }
+
+    QDir dir(library_dir);
+    QStringList entries = dir.entryList(
+        QStringList() << "*.abo",
+        QDir::Files | QDir::Readable,
+        QDir::Name | QDir::IgnoreCase
+    );
+
+    if (entries.isEmpty()) {
+        QMessageBox::warning(
+            this,
+            tr("Library empty"),
+            tr("No .abo files were found in the library folder.")
+        );
+        return;
+    }
+
+    QDialog dlg(this);
+    dlg.setWindowTitle(tr("Open from library"));
+    dlg.resize(450, 550);
+
+    QVBoxLayout *layout = new QVBoxLayout(&dlg);
+
+    QLabel *label = new QLabel(tr("Select a library file:"));
+    layout->addWidget(label);
+
+    // --- Filter box ---
+    QLineEdit *filter = new QLineEdit();
+    filter->setPlaceholderText(tr("Filter files..."));
+    layout->addWidget(filter);
+
+    // --- List widget ---
+    QListWidget *list = new QListWidget();
+    list->setSelectionMode(QAbstractItemView::SingleSelection);
+    list->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+    list->setIconSize(QSize(18, 18));
+    list->setSortingEnabled(true);
+    layout->addWidget(list);
+
+    // System file icon
+    QIcon fileIcon(":/assets/icon/abofile.png");
+
+    for (const QString &entry : entries) {
+        QListWidgetItem *item = new QListWidgetItem(fileIcon, entry);
+        list->addItem(item);
+    }
+
+    // --- Buttons ---
+    QDialogButtonBox *buttons = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel
+    );
+    layout->addWidget(buttons);
+
+    QObject::connect(buttons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    QObject::connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+
+    // Double-click loads immediately
+    QObject::connect(list, &QListWidget::itemDoubleClicked, &dlg, &QDialog::accept);
+
+    // --- Live filtering ---
+    QObject::connect(filter, &QLineEdit::textChanged, [list](const QString &text){
+        for (int i = 0; i < list->count(); ++i) {
+            QListWidgetItem *item = list->item(i);
+            bool match = item->text().contains(text, Qt::CaseInsensitive);
+            item->setHidden(!match);
+        }
+    });
+
+    // Focus filter so typing works immediately
+    filter->setFocus();
+
+    if (dlg.exec() != QDialog::Accepted || !list->currentItem()) {
+        return;
+    }
+
+    QString selection = list->currentItem()->text();
+    const QString filename = dir.filePath(selection);
+
+    this->interface_window->open_file(filename);
+    statusBar()->showMessage("Loaded " + filename + ".");
     this->setWindowTitle(QFileInfo(filename).fileName() + " - " + QString(PROGRAM_NAME));
 }
 
@@ -305,17 +431,51 @@ void MainWindow::exit() {
  */
 void MainWindow::about() {
     QMessageBox message_box;
-    message_box.setStyleSheet("QLabel{min-width: 250px; font-weight: normal;}");
-    message_box.setText(PROGRAM_NAME
-                        " version "
-                        PROGRAM_VERSION
-                        ".\n\nAuthor:\nIvo Filot <i.a.w.filot@tue.nl>\n\n"
-                        PROGRAM_NAME " is licensed under the GPLv3 license.\n\n"
-                        PROGRAM_NAME " is dynamically linked to Qt, which is licensed under LGPLv3.\n");
-    message_box.setIcon(QMessageBox::Information);
+
     message_box.setWindowTitle("About " PROGRAM_NAME);
-    message_box.setWindowIcon(QIcon(":/assets/icon/managlyph_256.ico"));
+    message_box.setIcon(QMessageBox::Information);
     message_box.setIconPixmap(QPixmap(":/assets/icon/managlyph_256.ico"));
+
+    message_box.setTextFormat(Qt::RichText);
+    message_box.setTextInteractionFlags(Qt::TextBrowserInteraction);
+    message_box.setTextInteractionFlags(Qt::TextBrowserInteraction);
+
+    QString text =
+        "<b>" PROGRAM_NAME "</b> version " PROGRAM_VERSION "<br><br>"
+
+        "<b>Authors</b><br>"
+        "Ivo Filot &lt;i.a.w.filot@tue.nl&gt;<br>"
+        "Koen Jongejan<br>"
+        "Luuk Kempen<br><br>"
+
+        "<b>Maintainer</b><br>"
+        "Ivo Filot &lt;i.a.w.filot@tue.nl&gt;<br><br>"
+
+        "<b>License</b><br>"
+        PROGRAM_NAME " is free software released under the "
+        "GNU General Public License v3.0 (GPL-3.0).<br><br>"
+
+        "This software uses the Qt framework, which is available under the "
+        "GNU Lesser General Public License v3.0 (LGPL-3.0).<br><br>"
+
+        "<b>Sponsorship</b><br>"
+        "This project has been co-financed through the TU/e Boost program.";
+
+    message_box.setText(text);
+
+    QString info =
+        "<p align='center'>"
+        "<img src=':/assets/icon/tue-logo.png' width='140'><br>"
+        "<a href='https://drive.tue.nl/projects/3d-visualization-with-artificial-intelligence-and-projection/'>"
+        "Project sponsorship details"
+        "</a></p>";
+
+    message_box.setInformativeText(info);
+
+    message_box.setStyleSheet(
+        "QLabel { min-width: 320px; font-weight: normal; }"
+    );
+
     message_box.exec();
 }
 
@@ -439,6 +599,23 @@ void MainWindow::toggle_orbitals_menu() {
 }
 
 /**
+ * @brief      Show lighting settings window
+ */
+void MainWindow::show_lighting_settings() {
+    if (!this->lighting_settings_dialog) {
+        this->lighting_settings_dialog = std::make_unique<LightingSettingsDialog>(
+            this->interface_window->get_anaglyph_widget(),
+            this
+        );
+    }
+
+    this->lighting_settings_dialog->sync_from_widget();
+    this->lighting_settings_dialog->show();
+    this->lighting_settings_dialog->raise();
+    this->lighting_settings_dialog->activateWindow();
+}
+
+/**
  * @brief      Show a message on the statusbar
  *
  * @param[in]  message  The message
@@ -446,6 +623,38 @@ void MainWindow::toggle_orbitals_menu() {
 void MainWindow::show_message_statusbar(const QString& message) {
     statusBar()->showMessage(message);
     this->statusbar_timer->start(1000);
+}
+
+/**
+ * @brief      Locate the library directory containing *.abo files.
+ */
+QString MainWindow::find_library_directory() const {
+    const QString app_dir = QCoreApplication::applicationDirPath();
+    QStringList candidates;
+
+    candidates << QDir(app_dir).filePath("assets/containers");
+    candidates << QDir(app_dir).filePath("../assets/containers");
+    candidates << QDir(app_dir).filePath("../share/managlyph/assets/containers");
+
+    const QStringList data_locations = QStandardPaths::standardLocations(QStandardPaths::AppDataLocation);
+    for (const QString& location : data_locations) {
+        candidates << QDir(location).filePath("assets/containers");
+    }
+
+    for (const QString& candidate : candidates) {
+        QDir dir(candidate);
+        if (dir.exists()) {
+            const QStringList entries = dir.entryList(
+                QStringList() << "*.abo",
+                QDir::Files | QDir::Readable
+            );
+            if (!entries.isEmpty()) {
+                return dir.absolutePath();
+            }
+        }
+    }
+
+    return QString();
 }
 
 /**

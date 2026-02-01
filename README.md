@@ -25,7 +25,7 @@ chemical concepts.
   setups or advanced displays, this feature ensures accessibility and enhanced
   visual performance for everyone.
 
-  ![red/cyan stereographic projection](img/managlyph-demo-03.JPG)
+  ![red/cyan stereographic projection](img/screenshot-anaglyph.png)
 - **Molecular Orbitals**: Managlyph leverages the versatile 'Atom Bond Object'
   (ABO) file format, a powerful tool for embedding and managing multiple
   atomistic structures. These files can encapsulate complex details, such as
@@ -35,21 +35,14 @@ chemical concepts.
   properties, making it an invaluable resource for advanced scientific modeling
   and analysis. 
 
-  ![molecular orbitals](img/managlyph-demo-01.JPG)
+  ![molecular orbitals](img/screenshot-molecular-orbitals.png)
 - **Atomic Orbitals**: Create, project, and rotate atomic orbitals up to the 4f
   subshell, providing an unparalleled opportunity to explore the intricate
   details of atomic structures. This capability allows users to visualize and
   analyze the shapes, orientations, and complexities of orbitals in 3D, offering
   a deeper understanding of quantum mechanics and atomic interactions.
 
-  ![molecular orbitals](img/managlyph-demo-02.JPG)
-- **Elementary Reaction Steps**: Visualize and illustrate intricate reaction
-  mechanisms with precision by sliding along the reaction coordinate. This
-  dynamic approach allows you to observe each stage of the reaction in
-  real-time, pausing at critical points to highlight key events such as bond
-  breaking, bond formation, and intermediate states. This interactive feature
-  provides a deeper understanding of reaction dynamics and pathways, making it
-  an invaluable tool for both teaching and research.
+  ![molecular orbitals](img/screenshot-atomic-orbitals.png)
 
 ## Boost
 

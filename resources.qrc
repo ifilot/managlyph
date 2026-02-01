@@ -9,10 +9,12 @@
         <file>assets/icon/interlaced_columns_rl_32.png</file>
         <file>assets/icon/arrow_left_right.png</file>
         <file>assets/icon/arrow_all.png</file>
+        <file>assets/icon/abofile.png</file>
         <file>assets/icon/plus.png</file>
         <file>assets/icon/save.png</file>
         <file>assets/icon/open.png</file>
         <file>assets/icon/close.png</file>
+        <file>assets/icon/tue-logo.png</file>
         <file>assets/icon/info.png</file>
         <file>assets/icon/interlaced_checkerboard_lr_32.png</file>
         <file>assets/icon/interlaced_checkerboard_rl_32.png</file>
@@ -50,8 +52,6 @@
         <file>assets/icon/managlyph_icon.png</file>
         <file>assets/shaders/simplecanvas.fs</file>
         <file>assets/shaders/simplecanvas.vs</file>
-        <file>assets/containers/C8H8.abo</file>
-        <file>assets/shaders/model.fs</file>
-        <file>assets/shaders/model.vs</file>
+        <file>assets/containers/cubane_fb.abo</file>
     </qresource>
 </RCC>

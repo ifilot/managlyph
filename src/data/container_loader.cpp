@@ -21,6 +21,12 @@
 
 #include "container_loader.h"
 
+#include <array>
+#include <cmath>
+#include <sstream>
+#include <vector>
+#include <zstd.h>
+
 /**
  * @brief ContainerLoader constructor
  */
@@ -32,106 +38,217 @@ ContainerLoader::ContainerLoader() {}
  * @param[in]  path   Path to file
  */
 std::shared_ptr<Container> ContainerLoader::load_data_abo(const std::string& path) {
-    qDebug() << "Start reading abo file: " << path.c_str();
+    qDebug() << "Start reading abo file:" << path.c_str();
 
     auto container = std::make_shared<Container>();
-
     std::ifstream file(path, std::ios::binary);
 
-    if(file.is_open()) {
-        uint16_t nr_frames = 0;
+    if (!file)
+        throw std::runtime_error("Could not open file: " + path);
 
-        // read number of frames
-        file.read((char*)&nr_frames, sizeof(uint16_t));
-        qDebug() << "Number of frames: " << nr_frames;
-        for(unsigned int i=0; i<nr_frames; i++) {
-            // read frame id
-            uint16_t frame_idx = 0;
-            file.read((char*)&frame_idx, sizeof(uint16_t));
-            qDebug() << "Frame idx: " << frame_idx;
+    auto read_or_throw = [&](std::istream& stream, char* data, std::size_t size) {
+        if (size == 0) return;
+        stream.read(data, size);
+        if (!stream)
+            throw std::runtime_error("Corrupt ABO file (unexpected EOF): " + path);
+    };
 
-            // read description
-            uint16_t descriptor_length = 0;
-            file.read((char*)&descriptor_length, sizeof(uint16_t));
-            std::vector<char> buffer(descriptor_length);
-            file.read(&buffer[0], descriptor_length);
-            std::string description(buffer.begin(), buffer.end());
-            //qDebug() << "Description: " << description.c_str();
+    enum class NormalEncoding {
+        Float32,
+        Oct16
+    };
 
-            // read nr atoms
-            uint16_t nr_atoms = 0;
-            file.read((char*)&nr_atoms, sizeof(uint16_t));
-            qDebug() << "Number of atoms: " << nr_atoms;
+    auto decode_octahedral_normal = [](int16_t nx, int16_t ny) {
+        constexpr float scale = 32767.0f;
+        glm::vec3 n(static_cast<float>(nx) / scale,
+                    static_cast<float>(ny) / scale,
+                    0.0f);
+        n.z = 1.0f - std::abs(n.x) - std::abs(n.y);
+        if (n.z < 0.0f) {
+            const float old_x = n.x;
+            n.x = (1.0f - std::abs(n.y)) * (old_x >= 0.0f ? 1.0f : -1.0f);
+            n.y = (1.0f - std::abs(old_x)) * (n.y >= 0.0f ? 1.0f : -1.0f);
+        }
+        const float length = std::sqrt(n.x * n.x + n.y * n.y + n.z * n.z);
+        if (length > 0.0f) {
+            n /= length;
+        }
+        return n;
+    };
 
-            // read atoms and positions
-            std::vector<uint8_t> elements(nr_atoms);
-            std::vector<glm::vec3> positions(nr_atoms);
-            for(unsigned int j=0; j<nr_atoms; j++) {
-                file.read((char*)&elements[j], sizeof(uint8_t));
-                file.read((char*)&positions[j][0], 3 * sizeof(float));
-            }
+    uint16_t nr_frames = 0;
+    read_or_throw(file, reinterpret_cast<char*>(&nr_frames), sizeof(nr_frames));
 
-            // create structure and populate with atoms
-            auto structure = std::make_shared<Structure>();
-            for(unsigned int i=0; i<nr_atoms; i++) {
-                structure->add_atom(elements[i], positions[i][0], positions[i][1], positions[i][2]);
-            }
-            structure->update(); // generate bonds
+    NormalEncoding normal_encoding = NormalEncoding::Float32;
+    std::unique_ptr<std::istringstream> payload_stream;
+    std::string payload_data;
+    if (nr_frames == 0) {
+        std::array<char, 4> magic{};
+        read_or_throw(file, magic.data(), magic.size());
+        if (std::string(magic.data(), magic.size()) != "ABOF")
+            throw std::runtime_error("Unsupported ABO file header: " + path);
 
-            // create frame
-            auto frame = std::make_shared<Frame>(structure, description);
+        uint8_t version = 0;
+        uint8_t flags = 0;
+        read_or_throw(file, reinterpret_cast<char*>(&version), sizeof(version));
+        read_or_throw(file, reinterpret_cast<char*>(&flags), sizeof(flags));
+        if (version != 1)
+            throw std::runtime_error("Unsupported ABO format version: " + std::to_string(version));
 
-            // read nr_models
-            uint16_t nr_models = 0;
-            file.read((char*)&nr_models, sizeof(uint16_t));
-            qDebug() << "Number of models: " << nr_models;
+        const bool is_compressed = (flags & 0x01) != 0;
+        if (is_compressed) {
+            std::vector<char> compressed((std::istreambuf_iterator<char>(file)),
+                                         std::istreambuf_iterator<char>());
+            if (compressed.empty())
+                throw std::runtime_error("Corrupt ABO file (missing compressed payload): " + path);
 
-            // read data models
-            for(unsigned int j=0; j<nr_models; j++) {
-                // model idx
-                uint16_t model_idx = 0;
-                file.read((char*)&model_idx, sizeof(uint16_t));
+            unsigned long long content_size =
+                ZSTD_getFrameContentSize(compressed.data(), compressed.size());
+            if (content_size == ZSTD_CONTENTSIZE_ERROR)
+                throw std::runtime_error("Corrupt ABO file (invalid zstd payload): " + path);
 
-                // model color
-                QVector4D color;
-                file.read((char*)&color[0], 4 * sizeof(float));
-
-                // number of vertices / normals
-                uint32_t nr_vertices = 0;
-                file.read((char*)&nr_vertices, sizeof(uint32_t));
-                // qDebug() << "Model idx : " << model_idx << " vertices: " << nr_vertices;
-
-                // read positions and normals
-                std::vector<glm::vec3> positions(nr_vertices);
-                std::vector<glm::vec3> normals(nr_vertices);
-                for(unsigned int k=0; k<nr_vertices; k++) {
-                    file.read((char*)&positions[k][0], 3 * sizeof(float));
-                    file.read((char*)&normals[k][0], 3 * sizeof(float));
+            std::vector<char> decompressed;
+            if (content_size != ZSTD_CONTENTSIZE_UNKNOWN) {
+                decompressed.resize(static_cast<size_t>(content_size));
+                size_t result = ZSTD_decompress(
+                    decompressed.data(), decompressed.size(),
+                    compressed.data(), compressed.size());
+                if (ZSTD_isError(result))
+                    throw std::runtime_error(
+                        std::string("Failed to decompress ABO payload: ") +
+                        ZSTD_getErrorName(result));
+                decompressed.resize(result);
+            } else {
+                ZSTD_DStream* dstream = ZSTD_createDStream();
+                if (!dstream)
+                    throw std::runtime_error("Failed to allocate zstd decompressor");
+                size_t init_result = ZSTD_initDStream(dstream);
+                if (ZSTD_isError(init_result)) {
+                    ZSTD_freeDStream(dstream);
+                    throw std::runtime_error(
+                        std::string("Failed to init zstd decompressor: ") +
+                        ZSTD_getErrorName(init_result));
                 }
 
-                // number of indices
-                uint32_t nr_faces = 0;
-                file.read((char*)&nr_faces, sizeof(uint32_t));
+                std::vector<char> out_buffer(ZSTD_DStreamOutSize());
+                ZSTD_inBuffer input{compressed.data(), compressed.size(), 0};
+                while (input.pos < input.size) {
+                    ZSTD_outBuffer output{out_buffer.data(), out_buffer.size(), 0};
+                    size_t const ret = ZSTD_decompressStream(dstream, &output, &input);
+                    if (ZSTD_isError(ret)) {
+                        ZSTD_freeDStream(dstream);
+                        throw std::runtime_error(
+                            std::string("Failed to stream-decompress ABO payload: ") +
+                            ZSTD_getErrorName(ret));
+                    }
+                    decompressed.insert(decompressed.end(),
+                                        out_buffer.data(),
+                                        out_buffer.data() + output.pos);
+                }
+                ZSTD_freeDStream(dstream);
+            }
 
-                // read indices
-                std::vector<uint32_t> indices(nr_faces * 3);
-                file.read((char*)&indices[0], nr_faces * 3 * sizeof(uint32_t));
-                qDebug() << "Model idx : " << model_idx << " faces: " << nr_faces;
+            payload_data.assign(decompressed.begin(), decompressed.end());
+            payload_stream = std::make_unique<std::istringstream>(payload_data, std::ios::binary);
+        }
 
-                // add to models
-                auto model = std::make_shared<Model>(positions, normals, indices);
+        normal_encoding = NormalEncoding::Oct16;
+        std::istream& input = payload_stream ? static_cast<std::istream&>(*payload_stream)
+                                             : static_cast<std::istream&>(file);
+        read_or_throw(input, reinterpret_cast<char*>(&nr_frames), sizeof(nr_frames));
+        qDebug() << "ABOF header detected. Version:" << version << "flags:" << flags;
+    }
+
+    qDebug() << "Number of frames:" << nr_frames;
+
+    std::istream& input = payload_stream ? static_cast<std::istream&>(*payload_stream)
+                                         : static_cast<std::istream&>(file);
+    for (uint16_t f = 0; f < nr_frames; ++f) {
+        uint16_t frame_idx = 0;
+        read_or_throw(input, reinterpret_cast<char*>(&frame_idx), sizeof(frame_idx));
+        qDebug() << "Frame idx:" << frame_idx;
+
+        // ---- Description ----
+        uint16_t descriptor_length = 0;
+        read_or_throw(input, reinterpret_cast<char*>(&descriptor_length), sizeof(descriptor_length));
+
+        std::string description;
+        if (descriptor_length > 0) {
+            description.resize(descriptor_length);
+            read_or_throw(input, description.data(), descriptor_length);
+        }
+
+        // ---- Atoms ----
+        uint16_t nr_atoms = 0;
+        read_or_throw(input, reinterpret_cast<char*>(&nr_atoms), sizeof(nr_atoms));
+        qDebug() << "Number of atoms:" << nr_atoms;
+
+        std::vector<uint8_t> elements(nr_atoms);
+        std::vector<glm::vec3> positions(nr_atoms);
+
+        for (uint16_t j = 0; j < nr_atoms; ++j) {
+            read_or_throw(input, reinterpret_cast<char*>(&elements[j]), sizeof(uint8_t));
+            read_or_throw(input, reinterpret_cast<char*>(&positions[j][0]), 3 * sizeof(float));
+        }
+
+        auto structure = std::make_shared<Structure>();
+        for (uint16_t j = 0; j < nr_atoms; ++j)
+            structure->add_atom(elements[j], positions[j].x, positions[j].y, positions[j].z);
+
+        structure->update();
+
+        auto frame = std::make_shared<Frame>(structure, description);
+
+        // ---- Models ----
+        uint16_t nr_models = 0;
+        read_or_throw(input, reinterpret_cast<char*>(&nr_models), sizeof(nr_models));
+        qDebug() << "Number of models:" << nr_models;
+
+        for (uint16_t m = 0; m < nr_models; ++m) {
+            uint16_t model_idx = 0;
+            read_or_throw(input, reinterpret_cast<char*>(&model_idx), sizeof(model_idx));
+
+            QVector4D color;
+            read_or_throw(input, reinterpret_cast<char*>(&color[0]), 4 * sizeof(float));
+
+            uint32_t nr_vertices = 0;
+            read_or_throw(input, reinterpret_cast<char*>(&nr_vertices), sizeof(nr_vertices));
+
+            std::vector<glm::vec3> v_positions(nr_vertices);
+            std::vector<glm::vec3> normals(nr_vertices);
+
+            for (uint32_t k = 0; k < nr_vertices; ++k) {
+                read_or_throw(input, reinterpret_cast<char*>(&v_positions[k][0]), 3 * sizeof(float));
+                if (normal_encoding == NormalEncoding::Float32) {
+                    read_or_throw(input, reinterpret_cast<char*>(&normals[k][0]), 3 * sizeof(float));
+                } else {
+                    int16_t nx = 0;
+                    int16_t ny = 0;
+                    read_or_throw(input, reinterpret_cast<char*>(&nx), sizeof(nx));
+                    read_or_throw(input, reinterpret_cast<char*>(&ny), sizeof(ny));
+                    normals[k] = decode_octahedral_normal(nx, ny);
+                }
+            }
+
+            uint32_t nr_faces = 0;
+            read_or_throw(input, reinterpret_cast<char*>(&nr_faces), sizeof(nr_faces));
+
+            std::vector<uint32_t> indices(nr_faces * 3);
+            if (!indices.empty())
+                read_or_throw(input, reinterpret_cast<char*>(indices.data()), indices.size() * sizeof(uint32_t));
+
+            qDebug() << "Model idx:" << model_idx << "faces:" << nr_faces;
+
+            if(nr_vertices == 0 || nr_faces == 0) {
+                qDebug() << "Skipping empty model:" << model_idx;
+            } else {
+                auto model = std::make_shared<Model>(v_positions, normals, indices);
                 model->set_color(color);
                 frame->add_model(model);
-            } // done looping over models
+            }
+        }
 
-            // insert frame into container
-            container->add_frame(frame);
-
-        } // done looping over frames
-
-        file.close();
-    } else {
-        throw std::runtime_error("Could not open file: " + path);
+        container->add_frame(frame);
     }
 
     return container;

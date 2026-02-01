@@ -71,6 +71,8 @@ class AnaglyphWidget : public QOpenGLWidget, protected QOpenGLFunctions {
     Q_OBJECT
 
 private:
+    static constexpr int supersample_scale = 2;
+
     QPoint m_lastPos;
 
     QString root_path;
@@ -205,6 +207,50 @@ public:
         this->scene->camera_position[1] = -v;
     }
 
+    /**
+     * @brief Set lighting settings for atoms and bonds.
+     *
+     * @param ambient
+     * @param diffuse
+     * @param specular
+     * @param shininess
+     */
+    void set_atom_lighting_settings(float ambient,
+                                    float diffuse,
+                                    float specular,
+                                    float shininess,
+                                    float edge_strength,
+                                    float edge_power);
+
+    /**
+     * @brief Set lighting settings for objects.
+     *
+     * @param ambient
+     * @param diffuse
+     * @param specular
+     * @param shininess
+     */
+    void set_object_lighting_settings(float ambient,
+                                      float diffuse,
+                                      float specular,
+                                      float shininess,
+                                      float edge_strength,
+                                      float edge_power);
+
+    /**
+     * @brief Get lighting settings for atoms and bonds.
+     *
+     * @return lighting settings
+     */
+    LightingSettings get_atom_lighting_settings() const;
+
+    /**
+     * @brief Get lighting settings for objects.
+     *
+     * @return lighting settings
+     */
+    LightingSettings get_object_lighting_settings() const;
+
     ~AnaglyphWidget();
 
 public slots:
@@ -275,6 +321,11 @@ protected:
      */
     void set_arcball_rotation(float arcball_angle, const QVector4D& arcball_vector);
 
+    /**
+     * @brief Load lighting settings from persistent storage.
+     */
+    void load_lighting_settings();
+
 private:
     /**
      * @brief      Build a canvas used for stereographic rendering
@@ -300,6 +351,21 @@ private:
      * @brief      Stereographic draw call
      */
     void paint_stereographic();
+
+    /**
+     * @brief Set viewport for offscreen rendering.
+     */
+    void set_render_viewport();
+
+    /**
+     * @brief Set viewport for onscreen rendering.
+     */
+    void set_screen_viewport();
+
+    /**
+     * @brief Get render target size for supersampling.
+     */
+    QSize render_size();
 
 signals:
     /**

@@ -20,6 +20,7 @@
  **************************************************************************/
 
 #include "atom.h"
+#include <cmath>
 
 Atom::Atom(unsigned int _atnr, double _x, double _y, double _z) :
 atnr(_atnr),

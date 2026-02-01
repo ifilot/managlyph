@@ -101,6 +101,13 @@ public:
 
 private:
     /**
+     * @brief      Set lighting uniforms.
+     *
+     * @param      shader  The shader
+     */
+    void set_lighting_uniforms(ShaderProgram* shader, const LightingSettings& settings) const;
+
+    /**
      * @brief      Draws atoms.
      *
      * @param[in]  atoms           The atoms
@@ -116,6 +123,14 @@ private:
      * @param[in]  structure  The structure
      */
     void draw_bonds(const Structure* structure);
+
+    /**
+     * @brief      Draw single object
+     *
+     * @param[in]  structure  The structure
+     * @param[in]  shader     Which shader to use
+     */
+    void draw_single_object(const std::shared_ptr<Model>& obj, ShaderProgram* shader);
 
     /**
      * @brief      Generate coordinates of a sphere

@@ -34,8 +34,14 @@
 #include <QTimer>
 #include <QStringList>
 #include <QCommandLineParser>
+#include <QStandardPaths>
+#include <QSettings>
+#include <QDir>
+#include <QInputDialog>
+#include <QCoreApplication>
 
 #include "interface_window.h"
+#include "lighting_settings_dialog.h"
 #include "logwindow.h"
 
 #include "../config.h"
@@ -58,6 +64,7 @@ private:
 
     // window for log messages
     std::unique_ptr<LogWindow> log_window;
+    std::unique_ptr<LightingSettingsDialog> lighting_settings_dialog;
 
 public:
     /**
@@ -79,6 +86,11 @@ private slots:
      * @brief      Open a new object file
      */
     void open();
+
+    /**
+     * @brief      Open a file from the bundled library.
+     */
+    void open_library();
 
     /**
      * @brief      Close the application
@@ -122,9 +134,19 @@ private slots:
      */
     void slot_debug_log();
 
+    /**
+     * @brief      Show lighting settings window
+     */
+    void show_lighting_settings();
+
 private:
     /**
      * @brief      Loads a theme.
      */
     void load_theme();
+
+    /**
+     * @brief      Locate the library directory containing *.abo files.
+     */
+    QString find_library_directory() const;
 };
