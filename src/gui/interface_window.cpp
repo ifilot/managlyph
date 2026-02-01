@@ -423,7 +423,7 @@ void InterfaceWindow::load_default_file() {
 
     qDebug() << "Creating custom molecule";
 
-    const QString filename = "C8H8.abo";
+    const QString filename = "cubane_fb.abo";
     QTemporaryDir tmp_dir;
     QFile::copy(":/assets/containers/" + filename, tmp_dir.path() + "/" + filename);
     this->open_file(tmp_dir.path() + "/" + filename);

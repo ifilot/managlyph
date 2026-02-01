@@ -335,7 +335,12 @@ void MainWindow::about() {
     QString text =
         "<b>" PROGRAM_NAME "</b> version " PROGRAM_VERSION "<br><br>"
 
-        "<b>Author</b><br>"
+        "<b>Authors</b><br>"
+        "Ivo Filot &lt;i.a.w.filot@tue.nl&gt;<br>"
+        "Koen Jongejan<br>"
+        "Luuk Kempen<br><br>"
+
+        "<b>Maintainer</b><br>"
         "Ivo Filot &lt;i.a.w.filot@tue.nl&gt;<br><br>"
 
         "<b>License</b><br>"
