@@ -45,6 +45,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
 
     // actions for file menu
     QAction *action_open = new QAction(menu_file);
+    QAction *action_open_library = new QAction(menu_file);
     QAction *action_quit = new QAction(menu_file);
 
     // actions for projection menu
@@ -100,6 +101,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
     // create actions for file menu
     action_open->setText(tr("Open"));
     action_open->setShortcuts(QKeySequence::Open);
+    action_open_library->setText(tr("Load from library"));
     action_quit->setText(tr("Quit"));
     action_quit->setShortcuts(QKeySequence::Quit);
     action_quit->setShortcut(Qt::CTRL | Qt::Key_Q);
@@ -155,6 +157,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
 
     // add actions to file menu
     menu_file->addAction(action_open);
+    menu_file->addAction(action_open_library);
     menu_file->addAction(action_quit);
 
     // add actions to projection menu
@@ -186,6 +189,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
 
     // connect actions file menu
     connect(action_open, &QAction::triggered, this, &MainWindow::open);
+    connect(action_open_library, &QAction::triggered, this, &MainWindow::open_library);
     connect(action_quit, &QAction::triggered, this, &MainWindow::exit);
 
     // connect actions projection menu (note; [this]{} is the idiomatic way by providing a functor - "this is the way")
@@ -290,6 +294,57 @@ void MainWindow::open() {
     statusBar()->showMessage("Loaded " + filename + ".");
 
     // set main window title
+    this->setWindowTitle(QFileInfo(filename).fileName() + " - " + QString(PROGRAM_NAME));
+}
+
+/**
+ * @brief      Open a file from the bundled library.
+ */
+void MainWindow::open_library() {
+    const QString library_dir = this->find_library_directory();
+    if (library_dir.isEmpty()) {
+        QMessageBox::warning(
+            this,
+            tr("Library not found"),
+            tr("Could not locate the library folder containing .abo files.")
+        );
+        return;
+    }
+
+    QDir dir(library_dir);
+    QStringList entries = dir.entryList(
+        QStringList() << "*.abo",
+        QDir::Files | QDir::Readable,
+        QDir::Name | QDir::IgnoreCase
+    );
+
+    if (entries.isEmpty()) {
+        QMessageBox::warning(
+            this,
+            tr("Library empty"),
+            tr("No .abo files were found in the library folder.")
+        );
+        return;
+    }
+
+    bool ok = false;
+    QString selection = QInputDialog::getItem(
+        this,
+        tr("Load from library"),
+        tr("Select a library file:"),
+        entries,
+        0,
+        false,
+        &ok
+    );
+
+    if (!ok || selection.isEmpty()) {
+        return;
+    }
+
+    const QString filename = dir.filePath(selection);
+    this->interface_window->open_file(filename);
+    statusBar()->showMessage("Loaded " + filename + ".");
     this->setWindowTitle(QFileInfo(filename).fileName() + " - " + QString(PROGRAM_NAME));
 }
 
@@ -515,6 +570,38 @@ void MainWindow::show_lighting_settings() {
 void MainWindow::show_message_statusbar(const QString& message) {
     statusBar()->showMessage(message);
     this->statusbar_timer->start(1000);
+}
+
+/**
+ * @brief      Locate the library directory containing *.abo files.
+ */
+QString MainWindow::find_library_directory() const {
+    const QString app_dir = QCoreApplication::applicationDirPath();
+    QStringList candidates;
+
+    candidates << QDir(app_dir).filePath("assets/containers");
+    candidates << QDir(app_dir).filePath("../assets/containers");
+    candidates << QDir(app_dir).filePath("../share/managlyph/assets/containers");
+
+    const QStringList data_locations = QStandardPaths::standardLocations(QStandardPaths::AppDataLocation);
+    for (const QString& location : data_locations) {
+        candidates << QDir(location).filePath("assets/containers");
+    }
+
+    for (const QString& candidate : candidates) {
+        QDir dir(candidate);
+        if (dir.exists()) {
+            const QStringList entries = dir.entryList(
+                QStringList() << "*.abo",
+                QDir::Files | QDir::Readable
+            );
+            if (!entries.isEmpty()) {
+                return dir.absolutePath();
+            }
+        }
+    }
+
+    return QString();
 }
 
 /**

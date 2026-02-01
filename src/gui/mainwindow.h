@@ -36,6 +36,9 @@
 #include <QCommandLineParser>
 #include <QStandardPaths>
 #include <QSettings>
+#include <QDir>
+#include <QInputDialog>
+#include <QCoreApplication>
 
 #include "interface_window.h"
 #include "lighting_settings_dialog.h"
@@ -83,6 +86,11 @@ private slots:
      * @brief      Open a new object file
      */
     void open();
+
+    /**
+     * @brief      Open a file from the bundled library.
+     */
+    void open_library();
 
     /**
      * @brief      Close the application
@@ -136,4 +144,9 @@ private:
      * @brief      Loads a theme.
      */
     void load_theme();
+
+    /**
+     * @brief      Locate the library directory containing *.abo files.
+     */
+    QString find_library_directory() const;
 };

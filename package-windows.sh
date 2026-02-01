@@ -50,6 +50,8 @@ cmake --build "${BUILD_DIR}"
 echo "[INFO] Staging files"
 mkdir -p "${DIST_DIR}"
 cp "${BUILD_DIR}/${APP_EXE}" "${DIST_DIR}/"
+mkdir -p "${DIST_DIR}/assets"
+cp -r "assets/containers" "${DIST_DIR}/assets/"
 
 # ============================
 # Locate windeployqt
