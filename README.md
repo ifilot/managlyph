@@ -13,7 +13,8 @@ versatility and ease of use make it an invaluable resource for teaching complex
 chemical concepts.
 
 > [!TIP]
-> Download the Windows 64 bit installer [via this link](https://github.com/ifilot/managlyph/releases/latest/download/managlyph-installer-win64.exe)
+> * Download the Windows 64 bit installer [via this link](https://github.com/ifilot/managlyph/releases/latest/download/managlyph-installer-win64.exe)
+> * Detailed information on how to use Managlyph can be found in the [online manual](https://ifilot.github.io/managlyph/).
 
 ## Features
 
