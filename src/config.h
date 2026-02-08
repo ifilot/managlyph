@@ -22,4 +22,4 @@
 #pragma once
 
 #define PROGRAM_NAME "Managlyph"
-#define PROGRAM_VERSION "1.1.0"
+#define PROGRAM_VERSION "1.1.1"

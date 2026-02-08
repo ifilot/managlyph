@@ -52,6 +52,6 @@
         <file>assets/icon/managlyph_icon.png</file>
         <file>assets/shaders/simplecanvas.fs</file>
         <file>assets/shaders/simplecanvas.vs</file>
-        <file>assets/containers/cubane_fb.abo</file>
+        <file>assets/containers/chemistry/cubane_fb.abo</file>
     </qresource>
 </RCC>

@@ -20,6 +20,10 @@
  **************************************************************************/
 #include "interface_window.h"
 
+#include <QCoreApplication>
+#include <QDir>
+#include <QStandardPaths>
+
 /**
  * @brief      Constructs the object.
  *
@@ -377,7 +381,7 @@ void InterfaceWindow::handle_new_container() {
     float maxdist = this->container->get_max_dim();
     qDebug() << "Parsing new frame to Anaglyph Widget class";
     qDebug() << "Max distance: " << maxdist;
-    float camera_distance = std::max(5.0f, maxdist * 1.5f);
+    float camera_distance = std::max(5.0f, maxdist * 2.0f);
     this->anaglyph_widget->set_camera_zoom(camera_distance);
     this->anaglyph_widget->set_frame(this->container->frame(this->cur_frame));
 }
@@ -423,8 +427,25 @@ void InterfaceWindow::load_default_file() {
 
     qDebug() << "Creating custom molecule";
 
-    const QString filename = "cubane_fb.abo";
-    QTemporaryDir tmp_dir;
-    QFile::copy(":/assets/containers/" + filename, tmp_dir.path() + "/" + filename);
-    this->open_file(tmp_dir.path() + "/" + filename);
+    const QString filename = "chemistry/cubane_fb.abo";
+    const QString app_dir = QCoreApplication::applicationDirPath();
+    QStringList candidates;
+
+    candidates << QDir(app_dir).filePath("assets/containers");
+    candidates << QDir(app_dir).filePath("../assets/containers");
+    candidates << QDir(app_dir).filePath("../share/managlyph/assets/containers");
+
+    const QStringList data_locations = QStandardPaths::standardLocations(QStandardPaths::AppDataLocation);
+    for (const QString& location : data_locations) {
+        candidates << QDir(location).filePath("assets/containers");
+    }
+
+    for (const QString& candidate : candidates) {
+        const QString filepath = QDir(candidate).filePath(filename);
+        QFileInfo file_info(filepath);
+        if (file_info.exists() && file_info.isReadable()) {
+            this->open_file(filepath);
+            return;
+        }
+    }
 }

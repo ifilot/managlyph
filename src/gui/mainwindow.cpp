@@ -27,6 +27,8 @@
 #include <QLabel>
 #include <QDialogButtonBox>
 #include <QAbstractItemView>
+#include <QComboBox>
+#include <QHBoxLayout>
 #include <QLineEdit>
 
 /**
@@ -109,7 +111,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
     // create actions for file menu
     action_open->setText(tr("Open"));
     action_open->setShortcuts(QKeySequence::Open);
-    action_open_library->setText(tr("Load from library"));
+    action_open_library->setText(tr("Open from library"));
     action_quit->setText(tr("Quit"));
     action_quit->setShortcuts(QKeySequence::Quit);
     action_quit->setShortcut(Qt::CTRL | Qt::Key_Q);
@@ -320,13 +322,32 @@ void MainWindow::open_library() {
     }
 
     QDir dir(library_dir);
-    QStringList entries = dir.entryList(
-        QStringList() << "*.abo",
-        QDir::Files | QDir::Readable,
-        QDir::Name | QDir::IgnoreCase
-    );
+    const QStringList subset_names = {"chemistry", "biology"};
+    const QStringList subset_label_names = {tr("Chemistry"), tr("Biology")};
+    QStringList subset_labels;
+    QStringList subset_dirs;
 
-    if (entries.isEmpty()) {
+    auto has_entries = [](const QDir& target_dir) {
+        return !target_dir.entryList(
+            QStringList() << "*.abo",
+            QDir::Files | QDir::Readable
+        ).isEmpty();
+    };
+
+    for (int i = 0; i < subset_names.size(); ++i) {
+        QDir subset_dir(dir.filePath(subset_names.at(i)));
+        if (subset_dir.exists() && has_entries(subset_dir)) {
+            subset_dirs << subset_names.at(i);
+            subset_labels << subset_label_names.at(i);
+        }
+    }
+
+    if (subset_dirs.isEmpty() && has_entries(dir)) {
+        subset_labels = QStringList() << tr("Library");
+        subset_dirs = QStringList() << QString();
+    }
+
+    if (subset_dirs.isEmpty()) {
         QMessageBox::warning(
             this,
             tr("Library empty"),
@@ -344,6 +365,17 @@ void MainWindow::open_library() {
     QLabel *label = new QLabel(tr("Select a library file:"));
     layout->addWidget(label);
 
+    QHBoxLayout *subset_layout = new QHBoxLayout();
+    QLabel *subset_label = new QLabel(tr("Subset:"));
+    QComboBox *subset_selector = new QComboBox();
+    subset_layout->addWidget(subset_label);
+    subset_layout->addWidget(subset_selector);
+    layout->addLayout(subset_layout);
+
+    for (const QString &subset_label_text : subset_labels) {
+        subset_selector->addItem(subset_label_text);
+    }
+
     // --- Filter box ---
     QLineEdit *filter = new QLineEdit();
     filter->setPlaceholderText(tr("Filter files..."));
@@ -360,10 +392,38 @@ void MainWindow::open_library() {
     // System file icon
     QIcon fileIcon(":/assets/icon/abofile.png");
 
-    for (const QString &entry : entries) {
-        QListWidgetItem *item = new QListWidgetItem(fileIcon, entry);
-        list->addItem(item);
+    auto populate_list = [&](int subset_index) {
+        list->clear();
+        const QString subset_path = subset_dirs.value(subset_index);
+        const QDir subset_dir = subset_path.isEmpty() ? dir : QDir(dir.filePath(subset_path));
+        const QStringList entries = subset_dir.entryList(
+            QStringList() << "*.abo",
+            QDir::Files | QDir::Readable,
+            QDir::Name | QDir::IgnoreCase
+        );
+
+        for (const QString &entry : entries) {
+            QListWidgetItem *item = new QListWidgetItem(fileIcon, entry);
+            list->addItem(item);
+        }
+
+        const QString filter_text = filter->text();
+        for (int i = 0; i < list->count(); ++i) {
+            QListWidgetItem *item = list->item(i);
+            bool match = item->text().contains(filter_text, Qt::CaseInsensitive);
+            item->setHidden(!match);
+        }
+        if (list->count() > 0) {
+            list->setCurrentRow(0);
+        }
+    };
+
+    int default_index = subset_dirs.indexOf("chemistry");
+    if (default_index < 0) {
+        default_index = 0;
     }
+    subset_selector->setCurrentIndex(default_index);
+    populate_list(default_index);
 
     // --- Buttons ---
     QDialogButtonBox *buttons = new QDialogButtonBox(
@@ -386,6 +446,13 @@ void MainWindow::open_library() {
         }
     });
 
+    QObject::connect(
+        subset_selector,
+        QOverload<int>::of(&QComboBox::currentIndexChanged),
+        [populate_list](int index){
+        populate_list(index);
+    });
+
     // Focus filter so typing works immediately
     filter->setFocus();
 
@@ -394,7 +461,9 @@ void MainWindow::open_library() {
     }
 
     QString selection = list->currentItem()->text();
-    const QString filename = dir.filePath(selection);
+    const QString subset_path = subset_dirs.value(subset_selector->currentIndex());
+    const QDir subset_dir = subset_path.isEmpty() ? dir : QDir(dir.filePath(subset_path));
+    const QString filename = subset_dir.filePath(selection);
 
     this->interface_window->open_file(filename);
     statusBar()->showMessage("Loaded " + filename + ".");
@@ -643,12 +712,29 @@ QString MainWindow::find_library_directory() const {
 
     for (const QString& candidate : candidates) {
         QDir dir(candidate);
-        if (dir.exists()) {
-            const QStringList entries = dir.entryList(
+        if (!dir.exists()) {
+            continue;
+        }
+
+        const QStringList entries = dir.entryList(
+            QStringList() << "*.abo",
+            QDir::Files | QDir::Readable
+        );
+        if (!entries.isEmpty()) {
+            return dir.absolutePath();
+        }
+
+        const QStringList subset_names = {"chemistry", "biology"};
+        for (const QString& subset : subset_names) {
+            QDir subset_dir(dir.filePath(subset));
+            if (!subset_dir.exists()) {
+                continue;
+            }
+            const QStringList subset_entries = subset_dir.entryList(
                 QStringList() << "*.abo",
                 QDir::Files | QDir::Readable
             );
-            if (!entries.isEmpty()) {
+            if (!subset_entries.isEmpty()) {
                 return dir.absolutePath();
             }
         }
