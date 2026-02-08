@@ -20,6 +20,10 @@
  **************************************************************************/
 #include "interface_window.h"
 
+#include <QCoreApplication>
+#include <QDir>
+#include <QStandardPaths>
+
 /**
  * @brief      Constructs the object.
  *
@@ -423,8 +427,25 @@ void InterfaceWindow::load_default_file() {
 
     qDebug() << "Creating custom molecule";
 
-    const QString filename = "cubane_fb.abo";
-    QTemporaryDir tmp_dir;
-    QFile::copy(":/assets/containers/" + filename, tmp_dir.path() + "/" + filename);
-    this->open_file(tmp_dir.path() + "/" + filename);
+    const QString filename = "chemistry/cubane_fb.abo";
+    const QString app_dir = QCoreApplication::applicationDirPath();
+    QStringList candidates;
+
+    candidates << QDir(app_dir).filePath("assets/containers");
+    candidates << QDir(app_dir).filePath("../assets/containers");
+    candidates << QDir(app_dir).filePath("../share/managlyph/assets/containers");
+
+    const QStringList data_locations = QStandardPaths::standardLocations(QStandardPaths::AppDataLocation);
+    for (const QString& location : data_locations) {
+        candidates << QDir(location).filePath("assets/containers");
+    }
+
+    for (const QString& candidate : candidates) {
+        const QString filepath = QDir(candidate).filePath(filename);
+        QFileInfo file_info(filepath);
+        if (file_info.exists() && file_info.isReadable()) {
+            this->open_file(filepath);
+            return;
+        }
+    }
 }
