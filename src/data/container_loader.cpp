@@ -24,6 +24,7 @@
 #include <array>
 #include <cmath>
 #include <limits>
+#include <optional>
 #include <sstream>
 #include <vector>
 #include <zstd.h>
@@ -36,7 +37,9 @@ ContainerLoader::ContainerLoader() {}
 namespace {
 
 constexpr unsigned int NEB_INTERPOLATION_STEPS_PER_SEGMENT = 10;
-constexpr float UNIT_CELL_EPSILON = 1e-3f;
+constexpr uint8_t FRAME_UNIT_CELL_FLAG_BIT = 0x01;
+
+using UnitCellMatrix = std::array<float, 9>;
 
 glm::vec3 catmull_rom(const glm::vec3& p0,
                       const glm::vec3& p1,
@@ -51,25 +54,6 @@ glm::vec3 catmull_rom(const glm::vec3& p0,
                    (-p0 + 3.0f * p1 - 3.0f * p2 + p3) * t3);
 }
 
-glm::vec3 wrap_delta_unit_cell(const glm::vec3& delta) {
-    return glm::vec3(delta.x - std::round(delta.x),
-                     delta.y - std::round(delta.y),
-                     delta.z - std::round(delta.z));
-}
-
-bool is_fractional_unit_cell_coordinates(const std::vector<std::shared_ptr<Frame>>& frames) {
-    for (const auto& frame : frames) {
-        for (const auto& atom : frame->get_structure()->get_atoms()) {
-            if (atom.x < -UNIT_CELL_EPSILON || atom.x > 1.0f + UNIT_CELL_EPSILON ||
-                atom.y < -UNIT_CELL_EPSILON || atom.y > 1.0f + UNIT_CELL_EPSILON ||
-                atom.z < -UNIT_CELL_EPSILON || atom.z > 1.0f + UNIT_CELL_EPSILON) {
-                return false;
-            }
-        }
-    }
-
-    return true;
-}
 
 } // namespace
 
@@ -124,6 +108,7 @@ std::shared_ptr<Container> ContainerLoader::load_data_abo(const std::string& pat
     std::unique_ptr<std::istringstream> payload_stream;
     std::string payload_data;
     bool is_neb_pathway = false;
+    uint8_t abof_version = 0;
     if (nr_frames == 0) {
         std::array<char, 4> magic{};
         read_or_throw(file, magic.data(), magic.size());
@@ -134,8 +119,9 @@ std::shared_ptr<Container> ContainerLoader::load_data_abo(const std::string& pat
         uint8_t flags = 0;
         read_or_throw(file, reinterpret_cast<char*>(&version), sizeof(version));
         read_or_throw(file, reinterpret_cast<char*>(&flags), sizeof(flags));
-        if (version != 1)
+        if (version != 1 && version != 2)
             throw std::runtime_error("Unsupported ABO format version: " + std::to_string(version));
+        abof_version = version;
 
         const bool is_compressed = (flags & 0x01) != 0;
         is_neb_pathway = (flags & 0x02) != 0;
@@ -224,6 +210,19 @@ std::shared_ptr<Container> ContainerLoader::load_data_abo(const std::string& pat
             read_or_throw(input, description.data(), descriptor_length);
         }
 
+        std::optional<UnitCellMatrix> frame_unit_cell;
+        if (abof_version == 2) {
+            uint8_t frame_flags = 0;
+            read_or_throw(input, reinterpret_cast<char*>(&frame_flags), sizeof(frame_flags));
+            if ((frame_flags & FRAME_UNIT_CELL_FLAG_BIT) != 0) {
+                UnitCellMatrix unit_cell{};
+                read_or_throw(input,
+                              reinterpret_cast<char*>(unit_cell.data()),
+                              unit_cell.size() * sizeof(float));
+                frame_unit_cell = unit_cell;
+            }
+        }
+
         // ---- Atoms ----
         uint16_t nr_atoms = 0;
         read_or_throw(input, reinterpret_cast<char*>(&nr_atoms), sizeof(nr_atoms));
@@ -244,6 +243,7 @@ std::shared_ptr<Container> ContainerLoader::load_data_abo(const std::string& pat
         structure->update();
 
         auto frame = std::make_shared<Frame>(structure, description);
+        frame->set_unit_cell(frame_unit_cell);
 
         // ---- Models ----
         uint16_t nr_models = 0;
@@ -302,11 +302,6 @@ std::shared_ptr<Container> ContainerLoader::load_data_abo(const std::string& pat
     if (is_neb_pathway && loaded_frames.size() >= 2) {
         const auto& reference_atoms = loaded_frames.front()->get_structure()->get_atoms();
         const size_t nr_atoms = reference_atoms.size();
-        const bool use_unit_cell_minimal_image = is_fractional_unit_cell_coordinates(loaded_frames);
-
-        if (!use_unit_cell_minimal_image) {
-            qWarning() << "NEB interpolation uses raw coordinates because unit-cell fractional coordinates were not detected.";
-        }
 
         bool can_interpolate = nr_atoms > 0;
         for (size_t frame_idx = 1; frame_idx < loaded_frames.size() && can_interpolate; ++frame_idx) {
@@ -347,11 +342,7 @@ std::shared_ptr<Container> ContainerLoader::load_data_abo(const std::string& pat
                     const glm::vec3 p2(atoms2[atom_idx].x, atoms2[atom_idx].y, atoms2[atom_idx].z);
                     const glm::vec3 p3(atoms3[atom_idx].x, atoms3[atom_idx].y, atoms3[atom_idx].z);
 
-                    const glm::vec3 p0_mic = use_unit_cell_minimal_image ? p1 + wrap_delta_unit_cell(p0 - p1) : p0;
-                    const glm::vec3 p2_mic = use_unit_cell_minimal_image ? p1 + wrap_delta_unit_cell(p2 - p1) : p2;
-                    const glm::vec3 p3_mic = use_unit_cell_minimal_image ? p2_mic + wrap_delta_unit_cell(p3 - p2) : p3;
-
-                    const glm::vec3 ipos = catmull_rom(p0_mic, p1, p2_mic, p3_mic, t);
+                    const glm::vec3 ipos = catmull_rom(p0, p1, p2, p3, t);
                     structure->add_atom(atoms1[atom_idx].atnr, ipos.x, ipos.y, ipos.z);
                 }
                 structure->update();
