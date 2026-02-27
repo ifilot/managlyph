@@ -27,6 +27,9 @@
 #include <QVBoxLayout>
 #include <QGridLayout>
 #include <QGroupBox>
+#include <QComboBox>
+#include <QSpinBox>
+#include <QPushButton>
 
 #include "anaglyph_widget.h"
 
@@ -63,4 +66,8 @@ private:
 
     LightingControls atom_controls;
     LightingControls object_controls;
+
+    QComboBox* msaa_combo = nullptr;
+    QSpinBox* sphere_tesselation_spinbox = nullptr;
+    QPushButton* reset_lighting_button = nullptr;
 };

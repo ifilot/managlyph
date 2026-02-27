@@ -44,12 +44,32 @@ LightingSettingsDialog::LightingSettingsDialog(AnaglyphWidget* anaglyph_widget, 
     auto *layout = new QVBoxLayout(this);
     auto *atom_group = new QGroupBox(tr("Atoms and bonds"));
     auto *object_group = new QGroupBox(tr("Objects (incl. orbitals)"));
+    auto *rendering_group = new QGroupBox(tr("Rendering"));
 
     setup_controls(atom_group, &atom_controls);
     setup_controls(object_group, &object_controls);
 
+    auto *rendering_grid = new QGridLayout(rendering_group);
+    this->msaa_combo = new QComboBox();
+    this->msaa_combo->addItem("1", 1);
+    this->msaa_combo->addItem("2", 2);
+    this->msaa_combo->addItem("4", 4);
+    this->msaa_combo->addItem("8", 8);
+
+    this->sphere_tesselation_spinbox = new QSpinBox();
+    this->sphere_tesselation_spinbox->setRange(0, 6);
+
+    this->reset_lighting_button = new QPushButton(tr("Reset lighting defaults"));
+
+    rendering_grid->addWidget(new QLabel(tr("MSAA samples")), 0, 0);
+    rendering_grid->addWidget(this->msaa_combo, 0, 1);
+    rendering_grid->addWidget(new QLabel(tr("Sphere tesselation")), 1, 0);
+    rendering_grid->addWidget(this->sphere_tesselation_spinbox, 1, 1);
+    rendering_grid->addWidget(this->reset_lighting_button, 2, 0, 1, 2);
+
     layout->addWidget(atom_group);
     layout->addWidget(object_group);
+    layout->addWidget(rendering_group);
 
     refresh_from_widget();
 
@@ -64,6 +84,14 @@ LightingSettingsDialog::LightingSettingsDialog(AnaglyphWidget* anaglyph_widget, 
 
     connect_controls(atom_controls);
     connect_controls(object_controls);
+    connect(this->msaa_combo, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, [this]() { apply_settings(); });
+    connect(this->sphere_tesselation_spinbox, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged), this, [this]() { apply_settings(); });
+    connect(this->reset_lighting_button, &QPushButton::clicked, this, [this]() {
+        if (this->anaglyph_widget) {
+            this->anaglyph_widget->reset_lighting_settings_to_defaults();
+        }
+        refresh_from_widget();
+    });
 
     this->resize(640,480);
 }
@@ -109,6 +137,10 @@ void LightingSettingsDialog::apply_settings() {
         object_edge_power
     );
 
+    const int msaa_samples = this->msaa_combo->currentData().toInt();
+    anaglyph_widget->set_msaa_samples(msaa_samples);
+    anaglyph_widget->set_sphere_tesselation_level(this->sphere_tesselation_spinbox->value());
+
     update_labels(atom_controls);
     update_labels(object_controls);
 }
@@ -146,6 +178,18 @@ void LightingSettingsDialog::refresh_from_widget() {
     object_controls.shininess_slider->setValue(static_cast<int>(object_settings.shininess));
     object_controls.edge_slider->setValue(static_cast<int>(object_settings.edge_strength * 100.0f));
     object_controls.edge_power_slider->setValue(static_cast<int>(object_settings.edge_power * 100.0f));
+
+    const int configured_msaa = anaglyph_widget->get_msaa_samples();
+    const int msaa_index = this->msaa_combo->findData(configured_msaa);
+    if (msaa_index >= 0) {
+        QSignalBlocker msaa_blocker(this->msaa_combo);
+        this->msaa_combo->setCurrentIndex(msaa_index);
+    }
+
+    {
+        QSignalBlocker tesselation_blocker(this->sphere_tesselation_spinbox);
+        this->sphere_tesselation_spinbox->setValue(anaglyph_widget->get_sphere_tesselation_level());
+    }
 
     update_labels(atom_controls);
     update_labels(object_controls);

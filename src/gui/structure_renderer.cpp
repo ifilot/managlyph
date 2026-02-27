@@ -34,7 +34,7 @@ StructureRenderer::StructureRenderer(const std::shared_ptr<Scene>& _scene,
     shader_manager(_shader_manager)
 {
     qDebug() << "Constructing Structure Renderer object";
-    this->generate_sphere_coordinates(3);
+    this->generate_sphere_coordinates(this->sphere_tesselation_level);
     this->generate_cylinder_coordinates(2, 18);
     this->load_sphere_to_vao();
     this->load_cylinder_to_vao();
@@ -43,6 +43,29 @@ StructureRenderer::StructureRenderer(const std::shared_ptr<Scene>& _scene,
 
     qDebug() << "Loading arrow model";
     this->load_arrow_model();
+}
+
+
+void StructureRenderer::set_sphere_tesselation_level(unsigned int tesselation_level) {
+    if (this->sphere_tesselation_level == tesselation_level) {
+        return;
+    }
+
+    this->sphere_tesselation_level = tesselation_level;
+
+    this->generate_sphere_coordinates(this->sphere_tesselation_level);
+
+    if (this->vao_sphere.isCreated()) {
+        this->vao_sphere.destroy();
+    }
+
+    for (unsigned int i = 0; i < 3; ++i) {
+        if (this->vbo_sphere[i].isCreated()) {
+            this->vbo_sphere[i].destroy();
+        }
+    }
+
+    this->load_sphere_to_vao();
 }
 
 /**
@@ -555,7 +578,7 @@ void StructureRenderer::load_cylinder_to_vao() {
     this->vbo_cylinder[2].bind();
     this->vbo_cylinder[2].allocate(&this->cylinder_indices[0], this->cylinder_indices.size() * sizeof(unsigned int));
 
-    this->vao_sphere.release();
+    this->vao_cylinder.release();
 }
 
 /**

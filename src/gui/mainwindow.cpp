@@ -75,6 +75,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
     QMenu *menu_camera_mode = new QMenu(tr("Mode"));
     QAction *action_camera_perspective = new QAction(menu_camera_mode);
     QAction *action_camera_orthographic = new QAction(menu_camera_mode);
+    QAction *action_camera_reset_panning = new QAction(menu_camera);
 
     // camera projections
     QMenu *menu_projection = new QMenu(tr("Projection"));
@@ -144,6 +145,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
     action_camera_orthographic->setText(tr("Orthographic"));
     action_camera_orthographic->setData(QVariant((int)CameraMode::ORTHOGRAPHIC));
     action_camera_orthographic->setShortcut(Qt::CTRL | Qt::Key_5);
+    action_camera_reset_panning->setText(tr("Reset panning"));
     action_projection_two_dimensional->setText(tr("Two-dimensional"));
     action_projection_anaglyph_red_cyan->setText(tr("Anaglyph (red/cyan)"));
     action_projection_interlaced_rows_lr->setText(tr("Interlaced rows (left first)"));
@@ -184,6 +186,8 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
     menu_camera->addMenu(menu_camera_mode);
     menu_camera_mode->addAction(action_camera_perspective);
     menu_camera_mode->addAction(action_camera_orthographic);
+    menu_camera->addSeparator();
+    menu_camera->addAction(action_camera_reset_panning);
     menu_projection->addAction(action_projection_two_dimensional);
     menu_projection->addAction(action_projection_anaglyph_red_cyan);
     menu_projection->addMenu(menu_projection_interlaced);
@@ -234,6 +238,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
     // connect actions camera menu
     connect(menu_camera_align, SIGNAL(triggered(QAction*)), this->interface_window, SLOT(set_camera_align(QAction*)));
     connect(menu_camera_mode, SIGNAL(triggered(QAction*)), this->interface_window, SLOT(set_camera_mode(QAction*)));
+    connect(action_camera_reset_panning, &QAction::triggered, this->interface_window, &InterfaceWindow::reset_panning);
 
     // add projection icon to status bar
     this->statusbar_projection_icon = new QLabel();

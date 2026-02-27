@@ -72,8 +72,11 @@ class AnaglyphWidget : public QOpenGLWidget, protected QOpenGLFunctions {
 
 private:
     static constexpr int supersample_scale = 2;
+    int msaa_samples = 4;
+    int sphere_tesselation_level = 4;
 
     QPoint m_lastPos;
+    QVector3D pan_offset = QVector3D(0.0f, 0.0f, 0.0f);
 
     QString root_path;
 
@@ -82,9 +85,15 @@ private:
     // default background color
     static constexpr float tint = 235.0f / 255.0f;
 
-    unsigned int framebuffers[FrameBuffer::NR_FRAMEBUFFERS];
-    unsigned int texture_color_buffers[FrameBuffer::NR_FRAMEBUFFERS];
-    unsigned int rbo[FrameBuffer::NR_FRAMEBUFFERS];
+    unsigned int framebuffers[FrameBuffer::NR_FRAMEBUFFERS] = {};
+    unsigned int framebuffers_msaa[FrameBuffer::NR_FRAMEBUFFERS] = {};
+    unsigned int texture_color_buffers[FrameBuffer::NR_FRAMEBUFFERS] = {};
+    unsigned int rbo[FrameBuffer::NR_FRAMEBUFFERS] = {};
+    unsigned int rbo_msaa_color[FrameBuffer::NR_FRAMEBUFFERS] = {};
+    unsigned int rbo_msaa_depth_stencil[FrameBuffer::NR_FRAMEBUFFERS] = {};
+
+    bool msaa_enabled = false;
+    bool framebuffers_initialized = false;
 
     QOpenGLVertexArrayObject quad_vao;
     QOpenGLVertexArrayObject quad_vao_small;
@@ -92,6 +101,7 @@ private:
 
     // used for arcball rotation
     bool arcball_rotation_flag = false;             // whether arcball rotation is active
+    bool pan_flag = false;                          // whether right-click panning is active
 
     QOpenGLVertexArrayObject vao;
     QOpenGLBuffer vbo[4];
@@ -177,6 +187,11 @@ public:
     void rotate_scene(float angle);
 
     /**
+     * @brief Reset panning offset.
+     */
+    void reset_panning();
+
+    /**
      * @brief      Sets the camera alignment.
      *
      * @param[in]  direction  The direction
@@ -250,6 +265,35 @@ public:
      * @return lighting settings
      */
     LightingSettings get_object_lighting_settings() const;
+
+    /**
+     * @brief Set MSAA sample count (supported values: 1, 2, 4, 8).
+     */
+    void set_msaa_samples(int samples);
+
+    /**
+     * @brief Get configured MSAA sample count.
+     */
+    int get_msaa_samples() const {
+        return this->msaa_samples;
+    }
+
+    /**
+     * @brief Set sphere tesselation level.
+     */
+    void set_sphere_tesselation_level(int tesselation_level);
+
+    /**
+     * @brief Get configured sphere tesselation level.
+     */
+    int get_sphere_tesselation_level() const {
+        return this->sphere_tesselation_level;
+    }
+
+    /**
+     * @brief Reset all lighting settings to defaults.
+     */
+    void reset_lighting_settings_to_defaults();
 
     ~AnaglyphWidget();
 
@@ -366,6 +410,21 @@ private:
      * @brief Get render target size for supersampling.
      */
     QSize render_size();
+
+    /**
+     * @brief Bind render framebuffer (multisampled when available).
+     */
+    void bind_render_framebuffer(FrameBuffer buffer);
+
+    /**
+     * @brief Resolve multisampled framebuffer content to texture framebuffer.
+     */
+    void resolve_framebuffer(FrameBuffer buffer);
+
+    /**
+     * @brief Release framebuffer resources.
+     */
+    void destroy_framebuffers();
 
 signals:
     /**
