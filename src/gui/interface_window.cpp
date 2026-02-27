@@ -267,7 +267,15 @@ void InterfaceWindow::open_file(const QString& filename) {
         return;
     }
 
-    this->playback_fps = 1;
+    if (this->container && this->container->is_neb_pathway()) {
+        this->set_axes_enabled(false);
+        this->set_pingpong_enabled(true);
+        this->set_rotation_enabled(false);
+        this->playback_fps = 60;
+    } else {
+        this->playback_fps = 1;
+    }
+
     if (this->fps_dropdown) {
         const int fps_index = this->fps_dropdown->findData(this->playback_fps);
         if (fps_index >= 0) {

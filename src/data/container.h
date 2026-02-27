@@ -32,6 +32,7 @@ class Container
 {
 private:
     std::vector<std::shared_ptr<Frame>> frames;
+    bool flag_is_neb_pathway = false;
 
 public:
     Container();
@@ -50,6 +51,14 @@ public:
 
     inline size_t get_nr_frames() const {
         return this->frames.size();
+    }
+
+    inline void set_is_neb_pathway(bool is_neb_pathway) {
+        this->flag_is_neb_pathway = is_neb_pathway;
+    }
+
+    inline bool is_neb_pathway() const {
+        return this->flag_is_neb_pathway;
     }
 
     /**
