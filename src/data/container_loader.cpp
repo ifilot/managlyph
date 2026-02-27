@@ -36,6 +36,7 @@ ContainerLoader::ContainerLoader() {}
 namespace {
 
 constexpr unsigned int NEB_INTERPOLATION_STEPS_PER_SEGMENT = 10;
+constexpr float UNIT_CELL_EPSILON = 1e-3f;
 
 glm::vec3 catmull_rom(const glm::vec3& p0,
                       const glm::vec3& p1,
@@ -48,6 +49,26 @@ glm::vec3 catmull_rom(const glm::vec3& p0,
                    (-p0 + p2) * t +
                    (2.0f * p0 - 5.0f * p1 + 4.0f * p2 - p3) * t2 +
                    (-p0 + 3.0f * p1 - 3.0f * p2 + p3) * t3);
+}
+
+glm::vec3 wrap_delta_unit_cell(const glm::vec3& delta) {
+    return glm::vec3(delta.x - std::round(delta.x),
+                     delta.y - std::round(delta.y),
+                     delta.z - std::round(delta.z));
+}
+
+bool is_fractional_unit_cell_coordinates(const std::vector<std::shared_ptr<Frame>>& frames) {
+    for (const auto& frame : frames) {
+        for (const auto& atom : frame->get_structure()->get_atoms()) {
+            if (atom.x < -UNIT_CELL_EPSILON || atom.x > 1.0f + UNIT_CELL_EPSILON ||
+                atom.y < -UNIT_CELL_EPSILON || atom.y > 1.0f + UNIT_CELL_EPSILON ||
+                atom.z < -UNIT_CELL_EPSILON || atom.z > 1.0f + UNIT_CELL_EPSILON) {
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 } // namespace
@@ -276,9 +297,16 @@ std::shared_ptr<Container> ContainerLoader::load_data_abo(const std::string& pat
         loaded_frames.push_back(frame);
     }
 
+    container->set_is_neb_pathway(is_neb_pathway);
+
     if (is_neb_pathway && loaded_frames.size() >= 2) {
         const auto& reference_atoms = loaded_frames.front()->get_structure()->get_atoms();
         const size_t nr_atoms = reference_atoms.size();
+        const bool use_unit_cell_minimal_image = is_fractional_unit_cell_coordinates(loaded_frames);
+
+        if (!use_unit_cell_minimal_image) {
+            qWarning() << "NEB interpolation uses raw coordinates because unit-cell fractional coordinates were not detected.";
+        }
 
         bool can_interpolate = nr_atoms > 0;
         for (size_t frame_idx = 1; frame_idx < loaded_frames.size() && can_interpolate; ++frame_idx) {
@@ -319,7 +347,11 @@ std::shared_ptr<Container> ContainerLoader::load_data_abo(const std::string& pat
                     const glm::vec3 p2(atoms2[atom_idx].x, atoms2[atom_idx].y, atoms2[atom_idx].z);
                     const glm::vec3 p3(atoms3[atom_idx].x, atoms3[atom_idx].y, atoms3[atom_idx].z);
 
-                    const glm::vec3 ipos = catmull_rom(p0, p1, p2, p3, t);
+                    const glm::vec3 p0_mic = use_unit_cell_minimal_image ? p1 + wrap_delta_unit_cell(p0 - p1) : p0;
+                    const glm::vec3 p2_mic = use_unit_cell_minimal_image ? p1 + wrap_delta_unit_cell(p2 - p1) : p2;
+                    const glm::vec3 p3_mic = use_unit_cell_minimal_image ? p2_mic + wrap_delta_unit_cell(p3 - p2) : p3;
+
+                    const glm::vec3 ipos = catmull_rom(p0_mic, p1, p2_mic, p3_mic, t);
                     structure->add_atom(atoms1[atom_idx].atnr, ipos.x, ipos.y, ipos.z);
                 }
                 structure->update();
