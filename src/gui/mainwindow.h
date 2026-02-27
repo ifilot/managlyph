@@ -41,7 +41,7 @@
 #include <QCoreApplication>
 
 #include "interface_window.h"
-#include "lighting_settings_dialog.h"
+#include "visualisation_settings_dialog.h"
 #include "logwindow.h"
 
 #include "../config.h"
@@ -64,7 +64,7 @@ private:
 
     // window for log messages
     std::unique_ptr<LogWindow> log_window;
-    std::unique_ptr<LightingSettingsDialog> lighting_settings_dialog;
+    std::unique_ptr<VisualisationSettingsDialog> visualisation_settings_dialog;
 
 public:
     /**
@@ -137,7 +137,7 @@ private slots:
     /**
      * @brief      Show lighting settings window
      */
-    void show_lighting_settings();
+    void show_visualisation_settings();
 
 private:
     /**

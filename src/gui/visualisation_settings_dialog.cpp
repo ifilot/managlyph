@@ -19,7 +19,7 @@
  *                                                                        *
  **************************************************************************/
 
-#include "lighting_settings_dialog.h"
+#include "visualisation_settings_dialog.h"
 
 #include <QSignalBlocker>
 
@@ -35,10 +35,10 @@ QString to_percent_label(int value) {
 }
 }  // namespace
 
-LightingSettingsDialog::LightingSettingsDialog(AnaglyphWidget* anaglyph_widget, QWidget* parent)
+VisualisationSettingsDialog::VisualisationSettingsDialog(AnaglyphWidget* anaglyph_widget, QWidget* parent)
     : QDialog(parent),
       anaglyph_widget(anaglyph_widget) {
-    setWindowTitle(tr("Lighting settings"));
+    setWindowTitle(tr("Visualisation settings"));
     setModal(false);
 
     auto *layout = new QVBoxLayout(this);
@@ -96,11 +96,11 @@ LightingSettingsDialog::LightingSettingsDialog(AnaglyphWidget* anaglyph_widget, 
     this->resize(640,480);
 }
 
-void LightingSettingsDialog::sync_from_widget() {
+void VisualisationSettingsDialog::sync_from_widget() {
     refresh_from_widget();
 }
 
-void LightingSettingsDialog::apply_settings() {
+void VisualisationSettingsDialog::apply_settings() {
     if (!anaglyph_widget) {
         return;
     }
@@ -145,7 +145,7 @@ void LightingSettingsDialog::apply_settings() {
     update_labels(object_controls);
 }
 
-void LightingSettingsDialog::refresh_from_widget() {
+void VisualisationSettingsDialog::refresh_from_widget() {
     if (!anaglyph_widget) {
         return;
     }
@@ -195,7 +195,7 @@ void LightingSettingsDialog::refresh_from_widget() {
     update_labels(object_controls);
 }
 
-void LightingSettingsDialog::setup_controls(QGroupBox* group_box, LightingControls* controls) {
+void VisualisationSettingsDialog::setup_controls(QGroupBox* group_box, LightingControls* controls) {
     auto *grid = new QGridLayout(group_box);
 
     controls->ambient_slider = new QSlider(Qt::Horizontal);
@@ -253,7 +253,7 @@ void LightingSettingsDialog::setup_controls(QGroupBox* group_box, LightingContro
     grid->addWidget(controls->edge_power_value, 5, 2);
 }
 
-void LightingSettingsDialog::update_labels(const LightingControls& controls) {
+void VisualisationSettingsDialog::update_labels(const LightingControls& controls) {
     controls.ambient_value->setText(to_percent_label(controls.ambient_slider->value()));
     controls.diffuse_value->setText(to_percent_label(controls.diffuse_slider->value()));
     controls.specular_value->setText(to_percent_label(controls.specular_slider->value()));

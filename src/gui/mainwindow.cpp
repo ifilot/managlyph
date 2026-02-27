@@ -93,11 +93,11 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
 
     // actions for tools menu
     QAction *action_view_orbitals_menu = new QAction(menu_tools);
-    QAction *action_lighting_settings = new QAction(menu_tools);
+    QAction *action_visualisation_settings = new QAction(menu_tools);
     action_view_orbitals_menu->setText(tr("Orbitals menu"));
-    action_lighting_settings->setText(tr("Lighting settings"));
+    action_visualisation_settings->setText(tr("Visualisation settings"));
     menu_tools->addAction(action_view_orbitals_menu);
-    menu_tools->addAction(action_lighting_settings);
+    menu_tools->addAction(action_visualisation_settings);
 
     // actions for help menu
     QAction *action_about = new QAction(menu_help);
@@ -218,7 +218,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
 
     // connect actions tools menu
     connect(action_view_orbitals_menu, &QAction::triggered, this, &MainWindow::toggle_orbitals_menu);
-    connect(action_lighting_settings, &QAction::triggered, this, &MainWindow::show_lighting_settings);
+    connect(action_visualisation_settings, &QAction::triggered, this, &MainWindow::show_visualisation_settings);
 
     // connect actions about menu
     connect(action_about, &QAction::triggered, this, &MainWindow::about);
@@ -327,8 +327,8 @@ void MainWindow::open_library() {
     }
 
     QDir dir(library_dir);
-    const QStringList subset_names = {"chemistry", "biology"};
-    const QStringList subset_label_names = {tr("Chemistry"), tr("Biology")};
+    const QStringList subset_names = {"chemistry", "biology", "catalysis"};
+    const QStringList subset_label_names = {tr("Chemistry"), tr("Biology"), tr("Catalysis")};
     QStringList subset_labels;
     QStringList subset_dirs;
 
@@ -675,18 +675,18 @@ void MainWindow::toggle_orbitals_menu() {
 /**
  * @brief      Show lighting settings window
  */
-void MainWindow::show_lighting_settings() {
-    if (!this->lighting_settings_dialog) {
-        this->lighting_settings_dialog = std::make_unique<LightingSettingsDialog>(
+void MainWindow::show_visualisation_settings() {
+    if (!this->visualisation_settings_dialog) {
+        this->visualisation_settings_dialog = std::make_unique<VisualisationSettingsDialog>(
             this->interface_window->get_anaglyph_widget(),
             this
         );
     }
 
-    this->lighting_settings_dialog->sync_from_widget();
-    this->lighting_settings_dialog->show();
-    this->lighting_settings_dialog->raise();
-    this->lighting_settings_dialog->activateWindow();
+    this->visualisation_settings_dialog->sync_from_widget();
+    this->visualisation_settings_dialog->show();
+    this->visualisation_settings_dialog->raise();
+    this->visualisation_settings_dialog->activateWindow();
 }
 
 /**
@@ -729,7 +729,7 @@ QString MainWindow::find_library_directory() const {
             return dir.absolutePath();
         }
 
-        const QStringList subset_names = {"chemistry", "biology"};
+        const QStringList subset_names = {"chemistry", "biology", "catalysis"};
         for (const QString& subset : subset_names) {
             QDir subset_dir(dir.filePath(subset));
             if (!subset_dir.exists()) {

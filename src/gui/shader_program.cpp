@@ -83,6 +83,7 @@ void ShaderProgram::add_uniforms() {
         this->uniforms.emplace("shininess",         this->m_program->uniformLocation("shininess"));
         this->uniforms.emplace("edge_strength",     this->m_program->uniformLocation("edge_strength"));
         this->uniforms.emplace("edge_power",        this->m_program->uniformLocation("edge_power"));
+        this->uniforms.emplace("camera_mode",       this->m_program->uniformLocation("camera_mode"));
     }
 
     if (this->type == ShaderProgramType::StereoscopicShader) {

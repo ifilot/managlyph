@@ -95,6 +95,7 @@ void StructureRenderer::draw_single_object(const std::shared_ptr<Model>& obj,
     shader->set_uniform("shininess",         ls.shininess);
     shader->set_uniform("edge_strength",     ls.edge_strength);
     shader->set_uniform("edge_power",        ls.edge_power);
+    shader->set_uniform("camera_mode", static_cast<int>(this->scene->camera_mode));
 
     shader->set_uniform("color", obj->get_color());
 
@@ -365,6 +366,7 @@ void StructureRenderer::set_lighting_uniforms(ShaderProgram* shader, const Light
     shader->set_uniform("shininess", settings.shininess);
     shader->set_uniform("edge_strength", settings.edge_strength);
     shader->set_uniform("edge_power", settings.edge_power);
+    shader->set_uniform("camera_mode", static_cast<int>(this->scene->camera_mode));
 }
 
 /**

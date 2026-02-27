@@ -33,11 +33,11 @@
 
 #include "anaglyph_widget.h"
 
-class LightingSettingsDialog : public QDialog {
+class VisualisationSettingsDialog : public QDialog {
     Q_OBJECT
 
 public:
-    explicit LightingSettingsDialog(AnaglyphWidget* anaglyph_widget, QWidget* parent = nullptr);
+    explicit VisualisationSettingsDialog(AnaglyphWidget* anaglyph_widget, QWidget* parent = nullptr);
     void sync_from_widget();
 
 private:
