@@ -22,7 +22,9 @@
 #ifndef FRAME_H
 #define FRAME_H
 
+#include <array>
 #include <memory>
+#include <optional>
 #include <vector>
 #include <string>
 
@@ -38,6 +40,7 @@ private:
     std::shared_ptr<Structure> structure;
     std::vector<std::shared_ptr<Model>> models;
     std::string description;
+    std::optional<std::array<float, 9>> unit_cell;
 
 public:
     /**
@@ -78,6 +81,22 @@ public:
      */
     inline const auto& get_models() const {
         return this->models;
+    }
+
+    /**
+     * @brief Set optional unit-cell matrix for this frame
+     * @param frame_unit_cell row-major 3x3 matrix
+     */
+    inline void set_unit_cell(const std::optional<std::array<float, 9>>& frame_unit_cell) {
+        this->unit_cell = frame_unit_cell;
+    }
+
+    /**
+     * @brief Get optional unit-cell matrix for this frame
+     * @return optional row-major 3x3 matrix
+     */
+    inline const auto& get_unit_cell() const {
+        return this->unit_cell;
     }
 };
 
