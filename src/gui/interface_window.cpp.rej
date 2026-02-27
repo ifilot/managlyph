@@ -1,0 +1,62 @@
+diff a/src/gui/interface_window.cpp b/src/gui/interface_window.cpp	(rejected hunks)
+@@ -245,51 +245,59 @@ void InterfaceWindow::build_sequence_interface() {
+  * @brief      Button press event
+  *
+  * @param      event  The event
+  */
+ void InterfaceWindow::keyPressEvent(QKeyEvent *e) {
+     QWidget::keyPressEvent(e);
+ }
+ 
+ /**
+  * @brief      Opens a file.
+  *
+  * @param[in]  filename  The filename
+  *
+  * @return     loading time of object in seconds
+  */
+ void InterfaceWindow::open_file(const QString& filename) {
+     qDebug() << "Opening file: " << filename;
+ 
+     try {
+         this->container = this->conload.load_data_abo(filename.toStdString());
+     } catch(const std::exception& e) {
+         QMessageBox::critical(this, tr("Exception encountered"), tr(e.what()) );
+         return;
+     }
+ 
+-    this->playback_fps = 1;
++    if (this->container && this->container->is_neb_pathway()) {
++        this->set_axes_enabled(false);
++        this->set_pingpong_enabled(true);
++        this->set_rotation_enabled(false);
++        this->playback_fps = 60;
++    } else {
++        this->playback_fps = 1;
++    }
++
+     if (this->fps_dropdown) {
+         const int fps_index = this->fps_dropdown->findData(this->playback_fps);
+         if (fps_index >= 0) {
+             this->fps_dropdown->setCurrentIndex(fps_index);
+         }
+     }
+ 
+     this->frame_direction = 1;
+     emit new_container_loaded();
+ }
+ 
+ /**
+  * @brief      Sets the camera align.
+  *
+  * @param      action  The action
+  */
+ void InterfaceWindow::set_camera_align(QAction* action) {
+     this->anaglyph_widget->set_camera_alignment(action->data().toInt());
+ }
+ 
+ /**
+  * @brief      Sets the camera mode (orthogonal or perspective).
+  *
+  * @param      action  The action
+  */

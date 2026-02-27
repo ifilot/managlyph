@@ -1,0 +1,194 @@
+diff a/src/data/container_loader.cpp b/src/data/container_loader.cpp	(rejected hunks)
+@@ -14,64 +14,85 @@
+  *   of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.              *
+  *   See the GNU General Public License for more details.                 *
+  *                                                                        *
+  *   You should have received a copy of the GNU General Public License    *
+  *   along with this program.  If not, see http://www.gnu.org/licenses/.  *
+  *                                                                        *
+  **************************************************************************/
+ 
+ #include "container_loader.h"
+ 
+ #include <array>
+ #include <cmath>
+ #include <limits>
+ #include <sstream>
+ #include <vector>
+ #include <zstd.h>
+ 
+ /**
+  * @brief ContainerLoader constructor
+  */
+ ContainerLoader::ContainerLoader() {}
+ 
+ namespace {
+ 
+ constexpr unsigned int NEB_INTERPOLATION_STEPS_PER_SEGMENT = 10;
++constexpr float UNIT_CELL_EPSILON = 1e-3f;
+ 
+ glm::vec3 catmull_rom(const glm::vec3& p0,
+                       const glm::vec3& p1,
+                       const glm::vec3& p2,
+                       const glm::vec3& p3,
+                       float t) {
+     const float t2 = t * t;
+     const float t3 = t2 * t;
+     return 0.5f * ((2.0f * p1) +
+                    (-p0 + p2) * t +
+                    (2.0f * p0 - 5.0f * p1 + 4.0f * p2 - p3) * t2 +
+                    (-p0 + 3.0f * p1 - 3.0f * p2 + p3) * t3);
+ }
+ 
++glm::vec3 wrap_delta_unit_cell(const glm::vec3& delta) {
++    return glm::vec3(delta.x - std::round(delta.x),
++                     delta.y - std::round(delta.y),
++                     delta.z - std::round(delta.z));
++}
++
++bool is_fractional_unit_cell_coordinates(const std::vector<std::shared_ptr<Frame>>& frames) {
++    for (const auto& frame : frames) {
++        for (const auto& atom : frame->get_structure()->get_atoms()) {
++            if (atom.x < -UNIT_CELL_EPSILON || atom.x > 1.0f + UNIT_CELL_EPSILON ||
++                atom.y < -UNIT_CELL_EPSILON || atom.y > 1.0f + UNIT_CELL_EPSILON ||
++                atom.z < -UNIT_CELL_EPSILON || atom.z > 1.0f + UNIT_CELL_EPSILON) {
++                return false;
++            }
++        }
++    }
++
++    return true;
++}
++
+ } // namespace
+ 
+ /**
+  * @brief      Loads an abo file from hard drive stored as little endian binary
+  *
+  * @param[in]  path   Path to file
+  */
+ std::shared_ptr<Container> ContainerLoader::load_data_abo(const std::string& path) {
+     qDebug() << "Start reading abo file:" << path.c_str();
+ 
+     auto container = std::make_shared<Container>();
+     std::ifstream file(path, std::ios::binary);
+ 
+     if (!file)
+         throw std::runtime_error("Could not open file: " + path);
+ 
+     auto read_or_throw = [&](std::istream& stream, char* data, std::size_t size) {
+         if (size == 0) return;
+         stream.read(data, size);
+         if (!stream)
+             throw std::runtime_error("Corrupt ABO file (unexpected EOF): " + path);
+     };
+ 
+     enum class NormalEncoding {
+         Float32,
+@@ -254,94 +275,105 @@ std::shared_ptr<Container> ContainerLoader::load_data_abo(const std::string& pat
+                     normals[k] = decode_octahedral_normal(nx, ny);
+                 }
+             }
+ 
+             uint32_t nr_faces = 0;
+             read_or_throw(input, reinterpret_cast<char*>(&nr_faces), sizeof(nr_faces));
+ 
+             std::vector<uint32_t> indices(nr_faces * 3);
+             if (!indices.empty())
+                 read_or_throw(input, reinterpret_cast<char*>(indices.data()), indices.size() * sizeof(uint32_t));
+ 
+             qDebug() << "Model idx:" << model_idx << "faces:" << nr_faces;
+ 
+             if(nr_vertices == 0 || nr_faces == 0) {
+                 qDebug() << "Skipping empty model:" << model_idx;
+             } else {
+                 auto model = std::make_shared<Model>(v_positions, normals, indices);
+                 model->set_color(color);
+                 frame->add_model(model);
+             }
+         }
+ 
+         loaded_frames.push_back(frame);
+     }
+ 
++    container->set_is_neb_pathway(is_neb_pathway);
++
+     if (is_neb_pathway && loaded_frames.size() >= 2) {
+         const auto& reference_atoms = loaded_frames.front()->get_structure()->get_atoms();
+         const size_t nr_atoms = reference_atoms.size();
++        const bool use_unit_cell_minimal_image = is_fractional_unit_cell_coordinates(loaded_frames);
++
++        if (!use_unit_cell_minimal_image) {
++            qWarning() << "NEB interpolation uses raw coordinates because unit-cell fractional coordinates were not detected.";
++        }
+ 
+         bool can_interpolate = nr_atoms > 0;
+         for (size_t frame_idx = 1; frame_idx < loaded_frames.size() && can_interpolate; ++frame_idx) {
+             const auto& atoms = loaded_frames[frame_idx]->get_structure()->get_atoms();
+             if (atoms.size() != nr_atoms) {
+                 can_interpolate = false;
+                 break;
+             }
+             for (size_t atom_idx = 0; atom_idx < nr_atoms; ++atom_idx) {
+                 if (atoms[atom_idx].atnr != reference_atoms[atom_idx].atnr) {
+                     can_interpolate = false;
+                     break;
+                 }
+             }
+         }
+ 
+         if (!can_interpolate) {
+             qWarning() << "NEB interpolation skipped due to incompatible atom ordering between frames.";
+         } else {
+             std::vector<std::shared_ptr<Frame>> interpolated_frames;
+             interpolated_frames.reserve((loaded_frames.size() - 1) * NEB_INTERPOLATION_STEPS_PER_SEGMENT + 1);
+ 
+             const auto make_interpolated_frame = [&](size_t seg_idx, float t) {
+                 const size_t i0 = (seg_idx == 0) ? seg_idx : seg_idx - 1;
+                 const size_t i1 = seg_idx;
+                 const size_t i2 = seg_idx + 1;
+                 const size_t i3 = (seg_idx + 2 < loaded_frames.size()) ? seg_idx + 2 : loaded_frames.size() - 1;
+ 
+                 const auto& atoms0 = loaded_frames[i0]->get_structure()->get_atoms();
+                 const auto& atoms1 = loaded_frames[i1]->get_structure()->get_atoms();
+                 const auto& atoms2 = loaded_frames[i2]->get_structure()->get_atoms();
+                 const auto& atoms3 = loaded_frames[i3]->get_structure()->get_atoms();
+ 
+                 auto structure = std::make_shared<Structure>();
+                 for (size_t atom_idx = 0; atom_idx < nr_atoms; ++atom_idx) {
+                     const glm::vec3 p0(atoms0[atom_idx].x, atoms0[atom_idx].y, atoms0[atom_idx].z);
+                     const glm::vec3 p1(atoms1[atom_idx].x, atoms1[atom_idx].y, atoms1[atom_idx].z);
+                     const glm::vec3 p2(atoms2[atom_idx].x, atoms2[atom_idx].y, atoms2[atom_idx].z);
+                     const glm::vec3 p3(atoms3[atom_idx].x, atoms3[atom_idx].y, atoms3[atom_idx].z);
+ 
+-                    const glm::vec3 ipos = catmull_rom(p0, p1, p2, p3, t);
++                    const glm::vec3 p0_mic = use_unit_cell_minimal_image ? p1 + wrap_delta_unit_cell(p0 - p1) : p0;
++                    const glm::vec3 p2_mic = use_unit_cell_minimal_image ? p1 + wrap_delta_unit_cell(p2 - p1) : p2;
++                    const glm::vec3 p3_mic = use_unit_cell_minimal_image ? p2_mic + wrap_delta_unit_cell(p3 - p2) : p3;
++
++                    const glm::vec3 ipos = catmull_rom(p0_mic, p1, p2_mic, p3_mic, t);
+                     structure->add_atom(atoms1[atom_idx].atnr, ipos.x, ipos.y, ipos.z);
+                 }
+                 structure->update();
+ 
+                 std::ostringstream descriptor;
+                 descriptor.precision(std::numeric_limits<float>::max_digits10);
+                 descriptor << "NEB interpolated frame " << seg_idx << " t=" << t;
+                 return std::make_shared<Frame>(structure, descriptor.str());
+             };
+ 
+             for (size_t seg_idx = 0; seg_idx + 1 < loaded_frames.size(); ++seg_idx) {
+                 for (unsigned int step = 0; step < NEB_INTERPOLATION_STEPS_PER_SEGMENT; ++step) {
+                     const float t = static_cast<float>(step) /
+                                     static_cast<float>(NEB_INTERPOLATION_STEPS_PER_SEGMENT);
+                     interpolated_frames.push_back(make_interpolated_frame(seg_idx, t));
+                 }
+             }
+ 
+             interpolated_frames.push_back(loaded_frames.back());
+             loaded_frames = std::move(interpolated_frames);
+             qDebug() << "Generated interpolated NEB frames:" << loaded_frames.size();
+         }
+     }
+ 
+     for (const auto& frame : loaded_frames) {
