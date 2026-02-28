@@ -25,6 +25,7 @@ through dynamic 3D visualizations using red/cyan glasses or 3D monitors.
   visual performance for everyone.
 
   ![red/cyan stereographic projection](img/screenshot-anaglyph.png)
+
 - **Molecular Orbitals**: Managlyph leverages the versatile 'Atom Bond Object'
   (ABO) file format, a powerful tool for embedding and managing multiple
   atomistic structures. These files can encapsulate complex details, such as
@@ -35,6 +36,7 @@ through dynamic 3D visualizations using red/cyan glasses or 3D monitors.
   and analysis. 
 
   ![molecular orbitals](img/screenshot-molecular-orbitals.png)
+
 - **Atomic Orbitals**: Create, project, and rotate atomic orbitals up to the 4f
   subshell, providing an unparalleled opportunity to explore the intricate
   details of atomic structures. This capability allows users to visualize and
@@ -43,9 +45,15 @@ through dynamic 3D visualizations using red/cyan glasses or 3D monitors.
 
   ![molecular orbitals](img/screenshot-atomic-orbitals.png)
 
-- **Reaction pathways**: Show reaction events.
+- **Reaction pathways**: Visualize elementary reaction steps and follow the
+  transformation of molecular structures as chemical reactions unfold. Managlyph
+  can display reaction events by smoothly transitioning between reactants,
+  intermediates, transition states, and products, allowing users to observe bond
+  breaking and formation in real time. This makes it possible to explore reaction
+  mechanisms step-by-step, identify key structural changes, and better understand
+  energetic and geometric factors that govern chemical reactivity.
 
-  ![molecular orbitals](img/screenshot-atomic-orbitals.png)
+  ![molecular orbitals](img/screenshot-reaction.png)
 
 ## Boost
 
