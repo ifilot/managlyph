@@ -45,7 +45,7 @@ add_executable(managlyph
     src/data/orbitals/wavefunction.cpp
     src/gui/anaglyph_widget.cpp
     src/gui/interface_window.cpp
-    src/gui/lighting_settings_dialog.cpp
+    src/gui/visualisation_settings_dialog.cpp
     src/gui/logwindow.cpp
     src/gui/mainwindow.cpp
     src/gui/orbital_widget.cpp

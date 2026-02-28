@@ -75,6 +75,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
     QMenu *menu_camera_mode = new QMenu(tr("Mode"));
     QAction *action_camera_perspective = new QAction(menu_camera_mode);
     QAction *action_camera_orthographic = new QAction(menu_camera_mode);
+    QAction *action_camera_reset_panning = new QAction(menu_camera);
 
     // camera projections
     QMenu *menu_projection = new QMenu(tr("Projection"));
@@ -92,11 +93,11 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
 
     // actions for tools menu
     QAction *action_view_orbitals_menu = new QAction(menu_tools);
-    QAction *action_lighting_settings = new QAction(menu_tools);
+    QAction *action_visualisation_settings = new QAction(menu_tools);
     action_view_orbitals_menu->setText(tr("Orbitals menu"));
-    action_lighting_settings->setText(tr("Lighting settings"));
+    action_visualisation_settings->setText(tr("Visualisation settings"));
     menu_tools->addAction(action_view_orbitals_menu);
-    menu_tools->addAction(action_lighting_settings);
+    menu_tools->addAction(action_visualisation_settings);
 
     // actions for help menu
     QAction *action_about = new QAction(menu_help);
@@ -144,6 +145,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
     action_camera_orthographic->setText(tr("Orthographic"));
     action_camera_orthographic->setData(QVariant((int)CameraMode::ORTHOGRAPHIC));
     action_camera_orthographic->setShortcut(Qt::CTRL | Qt::Key_5);
+    action_camera_reset_panning->setText(tr("Reset panning"));
     action_projection_two_dimensional->setText(tr("Two-dimensional"));
     action_projection_anaglyph_red_cyan->setText(tr("Anaglyph (red/cyan)"));
     action_projection_interlaced_rows_lr->setText(tr("Interlaced rows (left first)"));
@@ -184,6 +186,8 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
     menu_camera->addMenu(menu_camera_mode);
     menu_camera_mode->addAction(action_camera_perspective);
     menu_camera_mode->addAction(action_camera_orthographic);
+    menu_camera->addSeparator();
+    menu_camera->addAction(action_camera_reset_panning);
     menu_projection->addAction(action_projection_two_dimensional);
     menu_projection->addAction(action_projection_anaglyph_red_cyan);
     menu_projection->addMenu(menu_projection_interlaced);
@@ -196,6 +200,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
 
     // add actions to help menu
     menu_help->addAction(action_about);
+    action_about->setShortcut(Qt::Key_F1);
 
     // connect actions file menu
     connect(action_open, &QAction::triggered, this, &MainWindow::open);
@@ -214,7 +219,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
 
     // connect actions tools menu
     connect(action_view_orbitals_menu, &QAction::triggered, this, &MainWindow::toggle_orbitals_menu);
-    connect(action_lighting_settings, &QAction::triggered, this, &MainWindow::show_lighting_settings);
+    connect(action_visualisation_settings, &QAction::triggered, this, &MainWindow::show_visualisation_settings);
 
     // connect actions about menu
     connect(action_about, &QAction::triggered, this, &MainWindow::about);
@@ -234,6 +239,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
     // connect actions camera menu
     connect(menu_camera_align, SIGNAL(triggered(QAction*)), this->interface_window, SLOT(set_camera_align(QAction*)));
     connect(menu_camera_mode, SIGNAL(triggered(QAction*)), this->interface_window, SLOT(set_camera_mode(QAction*)));
+    connect(action_camera_reset_panning, &QAction::triggered, this->interface_window, &InterfaceWindow::reset_panning);
 
     // add projection icon to status bar
     this->statusbar_projection_icon = new QLabel();
@@ -252,7 +258,6 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
     setAcceptDrops(true);
 
     // set Window properties
-    this->setWindowTitle(QString(PROGRAM_NAME) + " " + QString(PROGRAM_VERSION));
     this->resize(800,600);
 
     qDebug() << "Done building MainWindow";
@@ -322,8 +327,8 @@ void MainWindow::open_library() {
     }
 
     QDir dir(library_dir);
-    const QStringList subset_names = {"chemistry", "biology"};
-    const QStringList subset_label_names = {tr("Chemistry"), tr("Biology")};
+    const QStringList subset_names = {"chemistry", "biology", "catalysis"};
+    const QStringList subset_label_names = {tr("Chemistry"), tr("Biology"), tr("Catalysis")};
     QStringList subset_labels;
     QStringList subset_dirs;
 
@@ -520,9 +525,18 @@ void MainWindow::about() {
         "<b>Maintainer</b><br>"
         "Ivo Filot &lt;i.a.w.filot@tue.nl&gt;<br><br>"
 
+        "<b>Acknowledgements</b><br>"
+        "Yves Hanssen<br>"
+        "Joeri van Limpt<br><br>"
+
         "<b>License</b><br>"
         PROGRAM_NAME " is free software released under the "
         "GNU General Public License v3.0 (GPL-3.0).<br><br>"
+
+        "<b>Repository</b>: "
+        "<a href='https://github.com/ifilot/managlyph'>"
+        "github.com/ifilot/managlyph"
+        "</a><br><br>"
 
         "This software uses the Qt framework, which is available under the "
         "GNU Lesser General Public License v3.0 (LGPL-3.0).<br><br>"
@@ -542,7 +556,7 @@ void MainWindow::about() {
     message_box.setInformativeText(info);
 
     message_box.setStyleSheet(
-        "QLabel { min-width: 320px; font-weight: normal; }"
+        "QLabel { min-width: 420px; font-weight: normal; }"
     );
 
     message_box.exec();
@@ -670,18 +684,18 @@ void MainWindow::toggle_orbitals_menu() {
 /**
  * @brief      Show lighting settings window
  */
-void MainWindow::show_lighting_settings() {
-    if (!this->lighting_settings_dialog) {
-        this->lighting_settings_dialog = std::make_unique<LightingSettingsDialog>(
+void MainWindow::show_visualisation_settings() {
+    if (!this->visualisation_settings_dialog) {
+        this->visualisation_settings_dialog = std::make_unique<VisualisationSettingsDialog>(
             this->interface_window->get_anaglyph_widget(),
             this
         );
     }
 
-    this->lighting_settings_dialog->sync_from_widget();
-    this->lighting_settings_dialog->show();
-    this->lighting_settings_dialog->raise();
-    this->lighting_settings_dialog->activateWindow();
+    this->visualisation_settings_dialog->sync_from_widget();
+    this->visualisation_settings_dialog->show();
+    this->visualisation_settings_dialog->raise();
+    this->visualisation_settings_dialog->activateWindow();
 }
 
 /**
@@ -724,7 +738,7 @@ QString MainWindow::find_library_directory() const {
             return dir.absolutePath();
         }
 
-        const QStringList subset_names = {"chemistry", "biology"};
+        const QStringList subset_names = {"chemistry", "biology", "catalysis"};
         for (const QString& subset : subset_names) {
             QDir subset_dir(dir.filePath(subset));
             if (!subset_dir.exists()) {

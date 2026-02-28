@@ -12,6 +12,7 @@ uniform float specular_strength;
 uniform float shininess;             // specular exponent (e.g. 16–128)
 uniform float edge_strength;
 uniform float edge_power;
+uniform int camera_mode;
 
 out vec4 fragColor;
 
@@ -21,6 +22,9 @@ void main()
     vec3 N = normalize(normal_eyespace);
     vec3 L = normalize(lightdirection_eyespace);
     vec3 V = normalize(vertex_direction_eyespace);
+    if (camera_mode == 1) {
+        V = vec3(0.0, 0.0, 1.0);
+    }
 
     // --- Ambient ---
     vec3 ambient = ambient_strength * light_color;

@@ -5,47 +5,51 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 ## Overview
-Managlyph is a powerful educational tool for visualizing atomic and molecular
-structures in 3D. It enables students and educators to explore atomic orbitals,
-reaction mechanisms, and molecular properties interactively, enhancing learning
-through dynamic 3D visualizations using red/cyan glasses or 3D monitors. Its
-versatility and ease of use make it an invaluable resource for teaching complex
-chemical concepts.
+Managlyph is a desktop application for 3D visualization of atomic and molecular
+structures.
 
-> [!TIP]
-> * Download the Windows 64 bit installer [via this link](https://github.com/ifilot/managlyph/releases/latest/download/managlyph-installer-win64.exe)
-> * Detailed information on how to use Managlyph can be found in the [online manual](https://ifilot.github.io/managlyph/).
+The application supports stereoscopic rendering via red/cyan anaglyph projection
+and interlaced output for compatible 3D displays. Typical use cases include
+classroom demonstrations, self-study, and interactive exploration of molecular
+models.
 
-## Features
+## Documentation and Downloads
+- Windows 64-bit installer:
+  https://github.com/ifilot/managlyph/releases/latest/download/managlyph-installer-win64.exe
+- User manual:
+  https://ifilot.github.io/managlyph/
 
-- **Anaglyph Projection**: Immerse yourself in stunning 3D visualizations with
-  just a simple pair of red/cyan anaglyph glasses, bringing depth and realism to
-  your viewing experience. For those with specialized 3D equipment, the system
-  also supports interlacing, enabling seamless compatibility with a wide range
-  of 3D monitors and projectors. Whether you're exploring 3D content on basic
-  setups or advanced displays, this feature ensures accessibility and enhanced
-  visual performance for everyone.
+## Capabilities
 
-  ![red/cyan stereographic projection](img/screenshot-anaglyph.png)
-- **Molecular Orbitals**: Managlyph leverages the versatile 'Atom Bond Object'
-  (ABO) file format, a powerful tool for embedding and managing multiple
-  atomistic structures. These files can encapsulate complex details, such as
-  molecular geometries, chemical bonding, and even molecular orbitals
-  represented as isosurfaces. This flexibility allows for the seamless
-  integration and visualization of intricate structural and electronic
-  properties, making it an invaluable resource for advanced scientific modeling
-  and analysis. 
+### Stereoscopic Rendering
+Managlyph provides red/cyan anaglyph rendering and interlaced stereo output.
+These modes are intended for use with either anaglyph glasses or supported 3D
+monitors/projectors.
 
-  ![molecular orbitals](img/screenshot-molecular-orbitals.png)
-- **Atomic Orbitals**: Create, project, and rotate atomic orbitals up to the 4f
-  subshell, providing an unparalleled opportunity to explore the intricate
-  details of atomic structures. This capability allows users to visualize and
-  analyze the shapes, orientations, and complexities of orbitals in 3D, offering
-  a deeper understanding of quantum mechanics and atomic interactions.
+![red/cyan stereographic projection](img/screenshot-anaglyph.png)
 
-  ![molecular orbitals](img/screenshot-atomic-orbitals.png)
+### ABO File Support and Molecular Orbitals
+Managlyph uses the Atom Bond Object (ABO) format to store atomistic structures
+and related metadata. ABO datasets can include molecular geometries, bonding
+information, and molecular-orbital isosurfaces for visualization.
 
-## Boost
+![molecular orbitals](img/screenshot-molecular-orbitals.png)
 
-**Managlyph** was developed with the generous financial support of the
-[TU/e boost program](https://boost.tue.nl/projects/3d-visualization-with-artificial-intelligence-and-projection/).
+### Atomic Orbitals
+The application can generate and render atomic orbitals up to the 4f subshell,
+including rotation and inspection in 3D.
+
+![atomic orbitals](img/screenshot-atomic-orbitals.png)
+
+### Reaction Pathway Visualization
+Managlyph can visualize elementary reaction pathways by interpolating between
+structures (for example: reactants, intermediates, transition states, and
+products). This allows stepwise inspection of geometry changes during a
+reaction.
+
+![reaction pathway](img/screenshot-reaction.png)
+
+## Project Support
+Development of Managlyph received financial support from the TU/e Boost
+program:
+https://boost.tue.nl/projects/3d-visualization-with-artificial-intelligence-and-projection/

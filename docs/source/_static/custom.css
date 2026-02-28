@@ -31,3 +31,14 @@
     padding: 6px 10px;
     border-radius: 4px;
 }
+
+/* Disable horizontal scrolling for tables */
+.wy-table-responsive {
+    overflow-x: visible !important;
+}
+
+/* Allow table cells to wrap normally */
+.wy-table-responsive table td,
+.wy-table-responsive table th {
+    white-space: normal !important;
+}

@@ -22,6 +22,25 @@
 #include "anaglyph_widget.h"
 
 #include <QSettings>
+#include <QOpenGLExtraFunctions>
+
+namespace {
+int normalize_msaa_samples(int samples) {
+    switch(samples) {
+    case 1:
+    case 2:
+    case 4:
+    case 8:
+        return samples;
+    default:
+        return 4;
+    }
+}
+
+int normalize_sphere_tesselation_level(int level) {
+    return std::clamp(level, 0, 6);
+}
+}
 
 /**
  * @brief      Constructs a new instance.
@@ -55,6 +74,11 @@ AnaglyphWidget::AnaglyphWidget(QWidget *parent)
  */
 void AnaglyphWidget::rotate_scene(float angle) {
     this->scene->rotate_z(angle);
+    this->update();
+}
+
+void AnaglyphWidget::reset_panning() {
+    this->pan_offset = QVector3D(0.0f, 0.0f, 0.0f);
     this->update();
 }
 
@@ -174,6 +198,10 @@ void AnaglyphWidget::load_lighting_settings() {
         settings.value("lighting/objects/edge_strength", this->scene->object_lighting.edge_strength).toFloat();
     this->scene->object_lighting.edge_power =
         settings.value("lighting/objects/edge_power", this->scene->object_lighting.edge_power).toFloat();
+
+    this->msaa_samples = normalize_msaa_samples(settings.value("rendering/msaa_samples", this->msaa_samples).toInt());
+    this->sphere_tesselation_level = normalize_sphere_tesselation_level(
+        settings.value("rendering/sphere_tesselation_level", this->sphere_tesselation_level).toInt());
 }
 
 /**
@@ -270,6 +298,74 @@ void AnaglyphWidget::set_camera_mode(int mode) {
     this->update();
 }
 
+
+void AnaglyphWidget::set_msaa_samples(int samples) {
+    const int normalized_samples = normalize_msaa_samples(samples);
+
+    if (this->msaa_samples == normalized_samples) {
+        return;
+    }
+
+    this->msaa_samples = normalized_samples;
+
+    QSettings settings;
+    settings.setValue("rendering/msaa_samples", this->msaa_samples);
+
+    if (!this->context()) {
+        return;
+    }
+
+    makeCurrent();
+    this->destroy_framebuffers();
+    this->build_framebuffers();
+    doneCurrent();
+
+    this->update();
+}
+void AnaglyphWidget::set_sphere_tesselation_level(int tesselation_level) {
+    const int normalized_level = normalize_sphere_tesselation_level(tesselation_level);
+
+    if (this->sphere_tesselation_level == normalized_level) {
+        return;
+    }
+
+    this->sphere_tesselation_level = normalized_level;
+
+    QSettings settings;
+    settings.setValue("rendering/sphere_tesselation_level", this->sphere_tesselation_level);
+
+    if (this->structure_renderer) {
+        makeCurrent();
+        this->structure_renderer->set_sphere_tesselation_level(this->sphere_tesselation_level);
+        doneCurrent();
+    }
+
+    this->update();
+}
+
+void AnaglyphWidget::reset_lighting_settings_to_defaults() {
+    const LightingSettings defaults;
+
+    this->set_atom_lighting_settings(defaults.ambient_strength,
+                                     defaults.diffuse_strength,
+                                     defaults.specular_strength,
+                                     defaults.shininess,
+                                     defaults.edge_strength,
+                                     defaults.edge_power);
+
+    this->set_object_lighting_settings(defaults.ambient_strength,
+                                       defaults.diffuse_strength,
+                                       defaults.specular_strength,
+                                       defaults.shininess,
+                                       defaults.edge_strength,
+                                       defaults.edge_power);
+
+    this->set_msaa_samples(4);
+    this->set_sphere_tesselation_level(4);
+}
+
+
+
 /**
  * @brief      Destroys the object.
  */
@@ -300,6 +396,7 @@ QSize AnaglyphWidget::sizeHint() const {
  */
 void AnaglyphWidget::cleanup() {
     makeCurrent();
+    this->destroy_framebuffers();
     doneCurrent();
 }
 
@@ -321,6 +418,7 @@ void AnaglyphWidget::initializeGL() {
     qDebug() << "Create structure renderer object";
     this->structure_renderer = std::make_unique<StructureRenderer>(this->scene,
                                                                    this->shader_manager);
+    this->structure_renderer->set_sphere_tesselation_level(this->sphere_tesselation_level);
 
     qDebug() << "Build Framebuffers";
     this->build_framebuffers();
@@ -352,12 +450,13 @@ void AnaglyphWidget::paintGL() {
 
     // paint coordinate axes to its own framebuffer
     if(this->flag_axis_enabled) {
-        glBindFramebuffer(GL_FRAMEBUFFER, this->framebuffers[FrameBuffer::COORDINATE_AXES]);
+        this->bind_render_framebuffer(FrameBuffer::COORDINATE_AXES);
         this->set_render_viewport();
         glEnable(GL_DEPTH_TEST);
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         this->structure_renderer->draw_coordinate_axes();
+        this->resolve_framebuffer(FrameBuffer::COORDINATE_AXES);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
@@ -371,7 +470,8 @@ void AnaglyphWidget::paintGL() {
     // then combine everything
     if(this->flag_axis_enabled) {
         glDisable(GL_DEPTH_TEST);
-        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
+        glEnable(GL_BLEND);
+        glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         glBlendEquation(GL_FUNC_ADD);
 
         ShaderProgram *shader = this->shader_manager->get_shader_program("simple_canvas_shader");
@@ -440,10 +540,18 @@ void AnaglyphWidget::resizeGL(int w, int h) {
     // resize textures and render buffers
     for (unsigned int i = 0; i < FrameBuffer::NR_FRAMEBUFFERS; ++i) {
         glBindTexture(GL_TEXTURE_2D, this->texture_color_buffers[i]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, target.width(), target.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, target.width(), target.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
         glBindRenderbuffer(GL_RENDERBUFFER, this->rbo[i]);
         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, target.width(), target.height());
+
+        if (this->msaa_enabled) {
+            glBindRenderbuffer(GL_RENDERBUFFER, this->rbo_msaa_color[i]);
+            QOpenGLContext::currentContext()->extraFunctions()->glRenderbufferStorageMultisample(GL_RENDERBUFFER, this->msaa_samples, GL_RGBA8, target.width(), target.height());
+
+            glBindRenderbuffer(GL_RENDERBUFFER, this->rbo_msaa_depth_stencil[i]);
+            QOpenGLContext::currentContext()->extraFunctions()->glRenderbufferStorageMultisample(GL_RENDERBUFFER, this->msaa_samples, GL_DEPTH24_STENCIL8, target.width(), target.height());
+        }
     }
 }
 
@@ -459,6 +567,11 @@ void AnaglyphWidget::mousePressEvent(QMouseEvent *event) {
         this->arcball_rotation_flag = true;
 
         // store positions of mouse
+        this->m_lastPos = event->pos();
+    }
+
+    if (event->buttons() & Qt::RightButton) {
+        this->pan_flag = true;
         this->m_lastPos = event->pos();
     }
 }
@@ -478,6 +591,10 @@ void AnaglyphWidget::mouseReleaseEvent(QMouseEvent *event) {
 
         // unset arcball rotation mode
         this->arcball_rotation_flag = false;
+    }
+
+    if (this->pan_flag && !(event->buttons() & Qt::RightButton)) {
+        this->pan_flag = false;
     }
 }
 
@@ -525,8 +642,23 @@ void AnaglyphWidget::mouseMoveEvent(QMouseEvent *event) {
             // set the rotation
             this->set_arcball_rotation(qRadiansToDegrees(angle), axis_model_space);
         }
-    } else if(event->buttons() & Qt::RightButton) {
-        // Nothing for the time being.
+    } else if(this->pan_flag) {
+        #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+            double ex = event->position().x();
+            double ey = event->position().y();
+        #else
+            double ex = event->pos().x();
+            double ey = event->pos().y();
+        #endif
+
+        const float dx = static_cast<float>(ex - this->m_lastPos.x());
+        const float dy = static_cast<float>(ey - this->m_lastPos.y());
+        const float zoom = std::max(1.0f, -this->scene->camera_position[1]);
+        const float pan_scale = zoom * 0.0012f;
+
+        this->pan_offset += QVector3D(-dx * pan_scale, 0.0f, dy * pan_scale);
+        this->m_lastPos = QPoint(static_cast<int>(ex), static_cast<int>(ey));
+        this->update();
     }
 }
 
@@ -646,15 +778,23 @@ void AnaglyphWidget::build_framebuffers() {
     const int render_width = std::max(1, this->geometry().width() * supersample_scale);
     const int render_height = std::max(1, this->geometry().height() * supersample_scale);
 
+    this->msaa_enabled = this->msaa_samples > 1;
+
     // initialize frame buffers
     glGenFramebuffers(FrameBuffer::NR_FRAMEBUFFERS, this->framebuffers);
     glGenTextures(FrameBuffer::NR_FRAMEBUFFERS, this->texture_color_buffers);
     glGenRenderbuffers(FrameBuffer::NR_FRAMEBUFFERS, this->rbo);
 
+    if (this->msaa_enabled) {
+        glGenFramebuffers(FrameBuffer::NR_FRAMEBUFFERS, this->framebuffers_msaa);
+        glGenRenderbuffers(FrameBuffer::NR_FRAMEBUFFERS, this->rbo_msaa_color);
+        glGenRenderbuffers(FrameBuffer::NR_FRAMEBUFFERS, this->rbo_msaa_depth_stencil);
+    }
+
     for (unsigned int i = 0; i < FrameBuffer::NR_FRAMEBUFFERS; ++i) {
         glBindFramebuffer(GL_FRAMEBUFFER, this->framebuffers[i]);
         glBindTexture(GL_TEXTURE_2D, this->texture_color_buffers[i]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, render_width, render_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, render_width, render_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, this->texture_color_buffers[i], 0);
@@ -666,7 +806,31 @@ void AnaglyphWidget::build_framebuffers() {
         if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
             qWarning() << "Framebuffer is not complete.";
         }
+
+        if (this->msaa_enabled) {
+            glBindFramebuffer(GL_FRAMEBUFFER, this->framebuffers_msaa[i]);
+
+            glBindRenderbuffer(GL_RENDERBUFFER, this->rbo_msaa_color[i]);
+            QOpenGLContext::currentContext()->extraFunctions()->glRenderbufferStorageMultisample(GL_RENDERBUFFER, this->msaa_samples, GL_RGBA8, render_width, render_height);
+            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, this->rbo_msaa_color[i]);
+
+            glBindRenderbuffer(GL_RENDERBUFFER, this->rbo_msaa_depth_stencil[i]);
+            QOpenGLContext::currentContext()->extraFunctions()->glRenderbufferStorageMultisample(GL_RENDERBUFFER, this->msaa_samples, GL_DEPTH24_STENCIL8, render_width, render_height);
+            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, this->rbo_msaa_depth_stencil[i]);
+
+            if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+                qWarning() << "MSAA framebuffer is not complete, disabling MSAA.";
+                this->msaa_enabled = false;
+                break;
+            }
+        }
     }
+
+    if (this->msaa_enabled) {
+        qDebug() << "MSAA enabled with" << this->msaa_samples << "samples.";
+    }
+
+    this->framebuffers_initialized = true;
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -685,19 +849,71 @@ void AnaglyphWidget::build_framebuffers() {
          1.0f,  1.0f,  1.0f, 1.0f
     };
 
-    this->quad_vao.create();
-    this->quad_vao.bind();
+    if (!this->quad_vao.isCreated()) {
+        this->quad_vao.create();
+        this->quad_vao.bind();
 
-    this->quad_vbo.create();
-    this->quad_vbo.setUsagePattern(QOpenGLBuffer::StaticDraw);
-    this->quad_vbo.bind();
-    this->quad_vbo.allocate(quadvecs, sizeof(quadvecs));
-    f->glEnableVertexAttribArray(0);
-    f->glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
-    f->glEnableVertexAttribArray(1);
-    f->glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+        this->quad_vbo.create();
+        this->quad_vbo.setUsagePattern(QOpenGLBuffer::StaticDraw);
+        this->quad_vbo.bind();
+        this->quad_vbo.allocate(quadvecs, sizeof(quadvecs));
+        f->glEnableVertexAttribArray(0);
+        f->glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
+        f->glEnableVertexAttribArray(1);
+        f->glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 
-    this->quad_vao.release();
+        this->quad_vao.release();
+    }
+}
+
+
+void AnaglyphWidget::bind_render_framebuffer(FrameBuffer buffer) {
+    if (this->msaa_enabled) {
+        glBindFramebuffer(GL_FRAMEBUFFER, this->framebuffers_msaa[buffer]);
+    } else {
+        glBindFramebuffer(GL_FRAMEBUFFER, this->framebuffers[buffer]);
+    }
+}
+
+void AnaglyphWidget::resolve_framebuffer(FrameBuffer buffer) {
+    if (!this->msaa_enabled) {
+        return;
+    }
+
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, this->framebuffers_msaa[buffer]);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, this->framebuffers[buffer]);
+
+    const QSize target = render_size();
+    QOpenGLContext::currentContext()->extraFunctions()->glBlitFramebuffer(0, 0,
+                      target.width(), target.height(),
+                      0, 0,
+                      target.width(), target.height(),
+                      GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, this->framebuffers[buffer]);
+}
+
+void AnaglyphWidget::destroy_framebuffers() {
+    if (!this->framebuffers_initialized) {
+        return;
+    }
+
+    glDeleteFramebuffers(FrameBuffer::NR_FRAMEBUFFERS, this->framebuffers);
+    glDeleteTextures(FrameBuffer::NR_FRAMEBUFFERS, this->texture_color_buffers);
+    glDeleteRenderbuffers(FrameBuffer::NR_FRAMEBUFFERS, this->rbo);
+
+    glDeleteFramebuffers(FrameBuffer::NR_FRAMEBUFFERS, this->framebuffers_msaa);
+    glDeleteRenderbuffers(FrameBuffer::NR_FRAMEBUFFERS, this->rbo_msaa_color);
+    glDeleteRenderbuffers(FrameBuffer::NR_FRAMEBUFFERS, this->rbo_msaa_depth_stencil);
+
+    std::fill(std::begin(this->framebuffers), std::end(this->framebuffers), 0u);
+    std::fill(std::begin(this->texture_color_buffers), std::end(this->texture_color_buffers), 0u);
+    std::fill(std::begin(this->rbo), std::end(this->rbo), 0u);
+    std::fill(std::begin(this->framebuffers_msaa), std::end(this->framebuffers_msaa), 0u);
+    std::fill(std::begin(this->rbo_msaa_color), std::end(this->rbo_msaa_color), 0u);
+    std::fill(std::begin(this->rbo_msaa_depth_stencil), std::end(this->rbo_msaa_depth_stencil), 0u);
+
+    this->framebuffers_initialized = false;
 }
 
 
@@ -709,6 +925,7 @@ void AnaglyphWidget::reset_matrices() {
     this->scene->rotation_matrix.rotate(20.0, QVector3D(1,0,0));
     this->scene->rotation_matrix.rotate(30.0, QVector3D(0,0,1));
     this->scene->arcball_rotation.setToIdentity();
+    this->pan_offset = QVector3D(0.0f, 0.0f, 0.0f);
 }
 
 /**
@@ -723,17 +940,18 @@ void AnaglyphWidget::paint_regular() {
     glBlendEquation(GL_FUNC_ADD);
 
     // set view matrix
-    QVector3D lookat = QVector3D(0.0f, 1.0f, 0.0f);
+    QVector3D lookat = QVector3D(0.0f, 1.0f, 0.0f) + this->pan_offset;
     this->scene->view.setToIdentity();
-    this->scene->view.lookAt(this->scene->camera_position, lookat, QVector3D(0.0, 0.0, 1.0));
+    this->scene->view.lookAt(this->scene->camera_position + this->pan_offset, lookat, QVector3D(0.0, 0.0, 1.0));
 
     // regular draw call to the STRUCTURE_NORMAL framebuffer
-    glBindFramebuffer(GL_FRAMEBUFFER, this->framebuffers[FrameBuffer::STRUCTURE_NORMAL]);
+    this->bind_render_framebuffer(FrameBuffer::STRUCTURE_NORMAL);
     this->set_render_viewport();
     glEnable(GL_DEPTH_TEST);
     glClearColor(this->tint, this->tint, this->tint, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     this->draw_structure();
+    this->resolve_framebuffer(FrameBuffer::STRUCTURE_NORMAL);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // bundle both framebuffers and draw on the canvas
@@ -773,30 +991,33 @@ void AnaglyphWidget::paint_stereographic() {
     glBlendEquation(GL_FUNC_ADD);
 
     // set convergence point and intra-ocular separation
-    QVector3D lookat = QVector3D(0.0f, 1.0f, 0.0f);
+    QVector3D lookat = QVector3D(0.0f, 1.0f, 0.0f) + this->pan_offset;
+    const QVector3D camera_position = this->scene->camera_position + this->pan_offset;
     float dist = 1.0f - this->scene->camera_position[1];
     float eye_sep = dist / 30.0f;
 
     // draw structure for left eye
     this->scene->view.setToIdentity();
-    this->scene->view.lookAt(this->scene->camera_position - QVector3D(eye_sep / 2.0, 0.0, 0.0), lookat, QVector3D(0.0, 0.0, 1.0));
-    glBindFramebuffer(GL_FRAMEBUFFER, this->framebuffers[FrameBuffer::STRUCTURE_LEFT]);
+    this->scene->view.lookAt(camera_position - QVector3D(eye_sep / 2.0, 0.0, 0.0), lookat, QVector3D(0.0, 0.0, 1.0));
+    this->bind_render_framebuffer(FrameBuffer::STRUCTURE_LEFT);
     this->set_render_viewport();
     glEnable(GL_DEPTH_TEST);
     glClearColor(this->tint, this->tint, this->tint, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     this->draw_structure();
+    this->resolve_framebuffer(FrameBuffer::STRUCTURE_LEFT);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // draw structure for right eye
     this->scene->view.setToIdentity();
-    this->scene->view.lookAt(this->scene->camera_position + QVector3D(eye_sep / 2.0, 0.0, 0.0), lookat, QVector3D(0.0, 0.0, 1.0));
-    glBindFramebuffer(GL_FRAMEBUFFER, this->framebuffers[FrameBuffer::STRUCTURE_RIGHT]);
+    this->scene->view.lookAt(camera_position + QVector3D(eye_sep / 2.0, 0.0, 0.0), lookat, QVector3D(0.0, 0.0, 1.0));
+    this->bind_render_framebuffer(FrameBuffer::STRUCTURE_RIGHT);
     this->set_render_viewport();
     glEnable(GL_DEPTH_TEST);
     glClearColor(this->tint, this->tint, this->tint, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     this->draw_structure();
+    this->resolve_framebuffer(FrameBuffer::STRUCTURE_RIGHT);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // combine L+L

@@ -78,6 +78,8 @@ private:
     // models
     std::shared_ptr<Model> axis_model;
 
+    unsigned int sphere_tesselation_level = 4;
+
 public:
     /**
      * @brief      Constructs a new instance.
@@ -98,6 +100,12 @@ public:
      * @brief      Draws coordinate axes.
      */
     void draw_coordinate_axes();
+
+    void set_sphere_tesselation_level(unsigned int tesselation_level);
+
+    unsigned int get_sphere_tesselation_level() const {
+        return this->sphere_tesselation_level;
+    }
 
 private:
     /**

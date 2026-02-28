@@ -37,6 +37,8 @@
 #include <QTimer>
 #include <QSplitter>
 #include <QInputDialog>
+#include <QComboBox>
+#include <QToolButton>
 #include <algorithm>
 
 #include "anaglyph_widget.h"
@@ -64,10 +66,15 @@ private:
 
     // control interface
     QWidget *control_interface;
-    QPushButton *btn_toggle_axis;
-    QPushButton *btn_rotate_model;
+    QToolButton *switch_toggle_axis;
+    QToolButton *switch_rotate_model;
+    QToolButton *switch_pingpong;
+    QLabel *fps_label = nullptr;
+    QComboBox *fps_dropdown = nullptr;
+    int playback_fps = 60;
     bool flag_rotate = false;
     bool flag_axes = true;
+    bool flag_pingpong = false;
 
     AnaglyphWidget *anaglyph_widget;
 
@@ -75,12 +82,12 @@ private:
     QWidget *frame_player;
     int cur_frame = 0;
     int max_frame = 1;
+    int frame_direction = 1;
     QLabel *frame_label;
     QSlider *frame_slider;
     QPushButton *btn_frame_next;
     QPushButton *btn_frame_prev;
     QPushButton *btn_frame_play;
-    QPushButton *btn_frame_pause;
     QTimer *frame_timer;
     QTimer *rotation_timer;
 
@@ -162,6 +169,11 @@ public slots:
     void set_camera_mode(QAction* action);
 
     /**
+     * @brief Reset pan offset in viewer.
+     */
+    void reset_panning();
+
+    /**
      * @brief Build orbital
      * @param Orbital identifier
      */
@@ -199,14 +211,9 @@ private slots:
     void frame_slider_moved(int val);
 
     /**
-     * @brief Handle pressing play button
+     * @brief Toggle frame playback (play/pause).
      */
-    void frame_timer_play();
-
-    /**
-     * @brief Handle pressing pause button
-     */
-    void frame_timer_pause();
+    void frame_timer_play_pause();
 
     /**
      * @brief Handle timer trigger
@@ -239,14 +246,34 @@ private slots:
     void toggle_rotation();
 
     /**
+     * @brief Set rotation enabled state.
+     */
+    void set_rotation_enabled(bool enabled);
+
+    /**
      * @brief Sets whether to display coordinate axes
      */
     void toggle_axes();
 
     /**
+     * @brief Set axis display enabled state.
+     */
+    void set_axes_enabled(bool enabled);
+
+    /**
+     * @brief Set ping-pong playback behavior.
+     */
+    void set_pingpong_enabled(bool enabled);
+
+    /**
      * @brief Handles rotation timer
      */
     void rotation_timer_trigger();
+
+    /**
+     * @brief Update playback FPS from text field.
+     */
+    void set_playback_fps(int index);
 
 signals:
     /**

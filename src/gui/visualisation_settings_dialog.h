@@ -27,14 +27,17 @@
 #include <QVBoxLayout>
 #include <QGridLayout>
 #include <QGroupBox>
+#include <QComboBox>
+#include <QSpinBox>
+#include <QPushButton>
 
 #include "anaglyph_widget.h"
 
-class LightingSettingsDialog : public QDialog {
+class VisualisationSettingsDialog : public QDialog {
     Q_OBJECT
 
 public:
-    explicit LightingSettingsDialog(AnaglyphWidget* anaglyph_widget, QWidget* parent = nullptr);
+    explicit VisualisationSettingsDialog(AnaglyphWidget* anaglyph_widget, QWidget* parent = nullptr);
     void sync_from_widget();
 
 private:
@@ -63,4 +66,8 @@ private:
 
     LightingControls atom_controls;
     LightingControls object_controls;
+
+    QComboBox* msaa_combo = nullptr;
+    QSpinBox* sphere_tesselation_spinbox = nullptr;
+    QPushButton* reset_lighting_button = nullptr;
 };
