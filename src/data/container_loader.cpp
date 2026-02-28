@@ -188,7 +188,7 @@ std::shared_ptr<Container> ContainerLoader::load_data_abo(const std::string& pat
         qDebug() << "ABOF header detected. Version:" << version << "flags:" << flags;
     }
 
-    qDebug() << "Number of frames:" << nr_frames;
+    qDebug() << "  Number of frames:" << nr_frames;
 
     std::vector<std::shared_ptr<Frame>> loaded_frames;
     loaded_frames.reserve(nr_frames);
@@ -198,7 +198,7 @@ std::shared_ptr<Container> ContainerLoader::load_data_abo(const std::string& pat
     for (uint16_t f = 0; f < nr_frames; ++f) {
         uint16_t frame_idx = 0;
         read_or_throw(input, reinterpret_cast<char*>(&frame_idx), sizeof(frame_idx));
-        qDebug() << "Frame idx:" << frame_idx;
+        qDebug() << "  Frame idx:" << frame_idx;
 
         // ---- Description ----
         uint16_t descriptor_length = 0;
@@ -226,7 +226,7 @@ std::shared_ptr<Container> ContainerLoader::load_data_abo(const std::string& pat
         // ---- Atoms ----
         uint16_t nr_atoms = 0;
         read_or_throw(input, reinterpret_cast<char*>(&nr_atoms), sizeof(nr_atoms));
-        qDebug() << "Number of atoms:" << nr_atoms;
+        qDebug() << "  Number of atoms:" << nr_atoms;
 
         std::vector<uint8_t> elements(nr_atoms);
         std::vector<glm::vec3> positions(nr_atoms);
@@ -248,7 +248,7 @@ std::shared_ptr<Container> ContainerLoader::load_data_abo(const std::string& pat
         // ---- Models ----
         uint16_t nr_models = 0;
         read_or_throw(input, reinterpret_cast<char*>(&nr_models), sizeof(nr_models));
-        qDebug() << "Number of models:" << nr_models;
+        qDebug() << "  Number of models:" << nr_models;
 
         for (uint16_t m = 0; m < nr_models; ++m) {
             uint16_t model_idx = 0;
@@ -283,7 +283,7 @@ std::shared_ptr<Container> ContainerLoader::load_data_abo(const std::string& pat
             if (!indices.empty())
                 read_or_throw(input, reinterpret_cast<char*>(indices.data()), indices.size() * sizeof(uint32_t));
 
-            qDebug() << "Model idx:" << model_idx << "faces:" << nr_faces;
+            qDebug() << "    Model idx:" << model_idx << "faces:" << nr_faces;
 
             if(nr_vertices == 0 || nr_faces == 0) {
                 qDebug() << "Skipping empty model:" << model_idx;

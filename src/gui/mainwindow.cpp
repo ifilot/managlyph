@@ -257,7 +257,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
     setAcceptDrops(true);
 
     // set Window properties
-    this->setWindowTitle(QString(PROGRAM_NAME) + " " + QString(PROGRAM_VERSION));
+    this->setWindowTitle(QString(PROGRAM_NAME));
     this->resize(800,600);
 
     qDebug() << "Done building MainWindow";
@@ -525,6 +525,10 @@ void MainWindow::about() {
         "<b>Maintainer</b><br>"
         "Ivo Filot &lt;i.a.w.filot@tue.nl&gt;<br><br>"
 
+        "<b>Acknowledgements</b><br>"
+        "Yves Hanssen<br>"
+        "Joeri van Limpt<br><br>"
+
         "<b>License</b><br>"
         PROGRAM_NAME " is free software released under the "
         "GNU General Public License v3.0 (GPL-3.0).<br><br>"
@@ -547,7 +551,7 @@ void MainWindow::about() {
     message_box.setInformativeText(info);
 
     message_box.setStyleSheet(
-        "QLabel { min-width: 320px; font-weight: normal; }"
+        "QLabel { min-width: 420px; font-weight: normal; }"
     );
 
     message_box.exec();

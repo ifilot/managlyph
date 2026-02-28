@@ -8,9 +8,7 @@
 Managlyph is a powerful educational tool for visualizing atomic and molecular
 structures in 3D. It enables students and educators to explore atomic orbitals,
 reaction mechanisms, and molecular properties interactively, enhancing learning
-through dynamic 3D visualizations using red/cyan glasses or 3D monitors. Its
-versatility and ease of use make it an invaluable resource for teaching complex
-chemical concepts.
+through dynamic 3D visualizations using red/cyan glasses or 3D monitors.
 
 > [!TIP]
 > * Download the Windows 64 bit installer [via this link](https://github.com/ifilot/managlyph/releases/latest/download/managlyph-installer-win64.exe)
@@ -42,6 +40,10 @@ chemical concepts.
   details of atomic structures. This capability allows users to visualize and
   analyze the shapes, orientations, and complexities of orbitals in 3D, offering
   a deeper understanding of quantum mechanics and atomic interactions.
+
+  ![molecular orbitals](img/screenshot-atomic-orbitals.png)
+
+- **Reaction pathways**: Show reaction events.
 
   ![molecular orbitals](img/screenshot-atomic-orbitals.png)
 
