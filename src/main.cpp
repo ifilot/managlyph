@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
         // build main window
         qInstallMessageHandler(message_output);
         mainWindow = std::make_unique<MainWindow>(log_messages);
-        mainWindow->setWindowTitle(QString(PROGRAM_NAME) + " " + QString(PROGRAM_VERSION));
+        mainWindow->setWindowTitle(QString(PROGRAM_NAME));
         mainWindow->set_cli_parser(parser);
     } catch(const std::exception& e) {
         std::cerr << "Error detected!" << std::endl;

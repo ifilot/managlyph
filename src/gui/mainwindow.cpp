@@ -200,6 +200,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
 
     // add actions to help menu
     menu_help->addAction(action_about);
+    action_about->setShortcut(Qt::Key_F1);
 
     // connect actions file menu
     connect(action_open, &QAction::triggered, this, &MainWindow::open);
@@ -257,7 +258,6 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages,
     setAcceptDrops(true);
 
     // set Window properties
-    this->setWindowTitle(QString(PROGRAM_NAME));
     this->resize(800,600);
 
     qDebug() << "Done building MainWindow";
@@ -532,6 +532,11 @@ void MainWindow::about() {
         "<b>License</b><br>"
         PROGRAM_NAME " is free software released under the "
         "GNU General Public License v3.0 (GPL-3.0).<br><br>"
+
+        "<b>Repository</b>: "
+        "<a href='https://github.com/ifilot/managlyph'>"
+        "github.com/ifilot/managlyph"
+        "</a><br><br>"
 
         "This software uses the Qt framework, which is available under the "
         "GNU Lesser General Public License v3.0 (LGPL-3.0).<br><br>"
