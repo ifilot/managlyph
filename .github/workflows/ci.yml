@@ -10,8 +10,19 @@ env:
   PROGNAME: managlyph
 
 jobs:
+  version-sync:
+    name: Version sync check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify application version consistency
+        run: ./scripts/check-version-sync.sh
+
   linux:
     name: Linux (Ubuntu)
+    needs: version-sync
     runs-on: ubuntu-latest
 
     steps:
@@ -45,6 +56,7 @@ jobs:
 # --------------------------------------------------
   windows-mingw:
     name: Windows (MSYS2 MinGW64)
+    needs: version-sync
     runs-on: windows-latest
 
     defaults:
